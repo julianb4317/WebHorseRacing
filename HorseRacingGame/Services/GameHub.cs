@@ -43,22 +43,21 @@ public class GameHub : Hub
 
     // ─── HUB METHODS ────────────────────────────────────────────────────────────
 
-    public async Task JoinGame(string playerName)
+    public async Task JoinGame(string playerName, string deviceId)
     {
         var connectionId = Context.ConnectionId;
 
-        // Try reconnect first
-        var player = _gameService.ReconnectPlayer(playerName, connectionId);
-        if (player == null)
-        {
-            player = _gameService.AddPlayer(playerName, connectionId);
-        }
+        var player = _gameService.AddOrReconnectPlayer(playerName, connectionId, deviceId);
 
-        // Store mapping
+        // Store mapping (remove old mapping for this device if exists)
+        var oldConnection = _connectionPlayerMap.FirstOrDefault(kvp => kvp.Value == player.Id).Key;
+        if (oldConnection != null && oldConnection != connectionId)
+        {
+            _connectionPlayerMap.TryRemove(oldConnection, out _);
+        }
         _connectionPlayerMap[connectionId] = player.Id;
 
         await Clients.All.SendAsync("PlayerJoined", playerName);
-        await Clients.Caller.SendAsync("PlayerJoined", playerName);
         await Clients.All.SendAsync("StateUpdated", _gameService.State);
     }
 
@@ -103,7 +102,7 @@ public class GameHub : Hub
         var currentPlayer = connectedPlayers[_gameService.State.CurrentPlayerIndex % connectedPlayers.Count];
         if (currentPlayer.Id != player.Id)
         {
-            await Clients.Caller.SendAsync("Error", "It's not your turn.");
+            await Clients.Caller.SendAsync("Error", "It's not your turn!");
             return;
         }
 
@@ -125,17 +124,11 @@ public class GameHub : Hub
 
         if (horse != null)
         {
-            if (state.Phase == GamePhase.Racing || (state.Phase == GamePhase.Scratching && horse.Scratched && horse.ScratchOrder == state.ScratchCount))
+            if (horse.Scratched && rollResult.Contains("scratched!"))
             {
-                // Horse was just scratched
-                if (horse.Scratched && horse.ScratchPenalty.HasValue &&
-                    rollResult.Contains("scratched!"))
-                {
-                    await Clients.All.SendAsync("HorseScratched", horse.Number, horse.ScratchPenalty.Value);
-                }
+                await Clients.All.SendAsync("HorseScratched", horse.Number, horse.ScratchPenalty ?? 0m);
             }
-
-            if (!horse.Scratched && state.Phase == GamePhase.Racing)
+            else if (!horse.Scratched && state.Phase == GamePhase.Racing)
             {
                 await Clients.All.SendAsync("HorseMoved", horse.Number, horse.Position);
             }
@@ -147,7 +140,6 @@ public class GameHub : Hub
             var winnerNames = state.WinningPlayers.Select(p => p.Name).ToList();
             await Clients.All.SendAsync("RaceWon", state.WinningHorse.Number, winnerNames);
 
-            // Build payout summary
             var balanceChanges = state.WinningPlayers.Select(p => new
             {
                 PlayerName = p.Name,
@@ -170,7 +162,6 @@ public class GameHub : Hub
             return;
         }
 
-        // Validate horse exists and is not scratched
         var horse = _gameService.State.Horses.FirstOrDefault(h => h.Number == horseNumber);
         if (horse == null)
         {
@@ -190,7 +181,6 @@ public class GameHub : Hub
             return;
         }
 
-        // Record the bet as a pot contribution
         player.Balance -= amount;
         _gameService.State.CentralPot += amount;
         _gameService.State.PotContributions.Add(new PotContribution
@@ -229,7 +219,6 @@ public class GameHub : Hub
 
         var state = _gameService.State;
 
-        // Build payout summary
         var balanceChanges = state.Players.Select(p => new
         {
             PlayerName = p.Name,

@@ -4,6 +4,7 @@ public class Player
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string ConnectionId { get; set; } = string.Empty;
+    public string DeviceId { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public decimal Balance { get; set; } = 100m;
     public List<Card> Cards { get; set; } = new();

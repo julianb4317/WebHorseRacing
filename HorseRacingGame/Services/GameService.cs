@@ -96,20 +96,63 @@ public class GameService
 
     // ─── PLAYER MANAGEMENT ──────────────────────────────────────────────────────
 
-    public Player AddPlayer(string name, string connectionId)
+    public Player AddOrReconnectPlayer(string name, string connectionId, string deviceId)
     {
         lock (_lock)
         {
+            // First: check if this device already has a player in the game
+            var existingByDevice = State.Players.FirstOrDefault(p => p.DeviceId == deviceId);
+            if (existingByDevice != null)
+            {
+                // Same device reconnecting (possibly with different connection)
+                existingByDevice.ConnectionId = connectionId;
+                existingByDevice.IsConnected = true;
+                existingByDevice.Name = name; // allow name update
+                EnsureHost();
+                NotifyStateChanged();
+                return existingByDevice;
+            }
+
+            // Second: check if there's a disconnected player with this name
+            var existingByName = State.Players.FirstOrDefault(p =>
+                p.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && !p.IsConnected);
+            if (existingByName != null)
+            {
+                existingByName.ConnectionId = connectionId;
+                existingByName.DeviceId = deviceId;
+                existingByName.IsConnected = true;
+                State.ChatMessages.Add($"{existingByName.Name} reconnected.");
+                EnsureHost();
+                NotifyStateChanged();
+                return existingByName;
+            }
+
+            // Third: check if there's already a connected player with this name
+            var existingConnected = State.Players.FirstOrDefault(p =>
+                p.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && p.IsConnected);
+            if (existingConnected != null)
+            {
+                // Same name already connected — update connection (new tab / page nav)
+                existingConnected.ConnectionId = connectionId;
+                existingConnected.DeviceId = deviceId;
+                EnsureHost();
+                NotifyStateChanged();
+                return existingConnected;
+            }
+
+            // New player
             var player = new Player
             {
                 Name = name,
                 ConnectionId = connectionId,
-                IsHost = State.Players.Count == 0,
+                DeviceId = deviceId,
+                IsHost = State.Players.Count(p => p.IsConnected) == 0,
                 IsConnected = true
             };
 
             State.Players.Add(player);
             State.ChatMessages.Add($"{name} joined the game.");
+            EnsureHost();
             NotifyStateChanged();
             return player;
         }
@@ -126,12 +169,22 @@ public class GameService
             player.IsConnected = false;
             State.ChatMessages.Add($"{player.Name} disconnected.");
 
-            // If it was this player's turn, advance to the next connected player
             var connectedPlayers = State.Players.Where(p => p.IsConnected).ToList();
+
+            // If fewer than 2 connected players remain during an active game, end it
+            if (connectedPlayers.Count < 2 &&
+                (State.Phase == GamePhase.Scratching || State.Phase == GamePhase.Racing))
+            {
+                State.Phase = GamePhase.Ended;
+                State.ChatMessages.Add("Not enough players remaining. Game ended.");
+                NotifyStateChanged();
+                return;
+            }
+
+            // Advance turn index if needed
             if (connectedPlayers.Count > 0 &&
                 (State.Phase == GamePhase.Scratching || State.Phase == GamePhase.Racing))
             {
-                // Recalculate index based on connected players only
                 if (State.CurrentPlayerIndex >= connectedPlayers.Count)
                 {
                     State.CurrentPlayerIndex = 0;
@@ -142,37 +195,30 @@ public class GameService
                 State.CurrentPlayerIndex = 0;
             }
 
-            // If host left, promote next connected player
+            // Handle host transfer
             if (player.IsHost)
             {
                 player.IsHost = false;
-                var newHost = State.Players.FirstOrDefault(p => p.IsConnected);
-                if (newHost != null)
-                {
-                    newHost.IsHost = true;
-                    State.ChatMessages.Add($"{newHost.Name} is now the host.");
-                }
+                EnsureHost();
             }
 
             NotifyStateChanged();
         }
     }
 
-    public Player? ReconnectPlayer(string name, string connectionId)
+    private void EnsureHost()
     {
-        lock (_lock)
-        {
-            var player = State.Players.FirstOrDefault(p =>
-                p.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && !p.IsConnected);
+        var connectedPlayers = State.Players.Where(p => p.IsConnected).ToList();
+        if (connectedPlayers.Count == 0) return;
 
-            if (player == null) return null;
+        // Check if any connected player is already host
+        var currentHost = connectedPlayers.FirstOrDefault(p => p.IsHost);
+        if (currentHost != null) return;
 
-            player.ConnectionId = connectionId;
-            player.IsConnected = true;
-            State.ChatMessages.Add($"{player.Name} reconnected.");
-            NotifyStateChanged();
-            return player;
-        }
+        // Assign host to the first connected player (by index order)
+        var newHost = connectedPlayers.First();
+        newHost.IsHost = true;
+        State.ChatMessages.Add($"{newHost.Name} is now the host.");
     }
 
     // ─── GAME FLOW METHODS ──────────────────────────────────────────────────────

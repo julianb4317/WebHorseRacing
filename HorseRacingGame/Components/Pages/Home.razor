@@ -171,6 +171,7 @@ else
 @code {
     private HubConnection? _hubConnection;
     private string _playerName = string.Empty;
+    private string _deviceId = Guid.NewGuid().ToString();
     private bool _hasJoined;
     private bool _gameInProgress;
     private string _errorMessage = string.Empty;
@@ -209,7 +210,7 @@ else
             await _hubConnection.StartAsync();
             _connectionState = ConnectionState.Connected;
 
-            await _hubConnection.SendAsync("JoinGame", _playerName.Trim());
+            await _hubConnection.SendAsync("JoinGame", _playerName.Trim(), _deviceId);
         }
         catch (Exception ex)
         {
@@ -246,7 +247,7 @@ else
             // If game has moved past lobby, navigate to /game with player name
             if (_hasJoined && state.Phase != GamePhase.Lobby)
             {
-                InvokeAsync(() => Navigation.NavigateTo($"/game?name={Uri.EscapeDataString(_playerName.Trim())}"));
+                InvokeAsync(() => Navigation.NavigateTo($"/game?name={Uri.EscapeDataString(_playerName.Trim())}&deviceId={Uri.EscapeDataString(_deviceId)}"));
             }
 
             InvokeAsync(StateHasChanged);
@@ -292,7 +293,7 @@ else
             // Re-join with same name to restore player state
             if (_hubConnection != null && !string.IsNullOrEmpty(_playerName))
             {
-                await _hubConnection.SendAsync("JoinGame", _playerName.Trim());
+                await _hubConnection.SendAsync("JoinGame", _playerName.Trim(), _deviceId);
             }
             await InvokeAsync(StateHasChanged);
         };

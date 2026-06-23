@@ -437,6 +437,7 @@ else if (_gameState?.Phase != GamePhase.Ended || !_showScoreboard)
 @code {
     private HubConnection? _hubConnection;
     private string _playerName = string.Empty;
+    private string _deviceId = string.Empty;
     private bool _isConnected;
     private GameState? _gameState;
     private Player? _currentPlayer;
@@ -453,15 +454,23 @@ else if (_gameState?.Phase != GamePhase.Ended || !_showScoreboard)
 
     protected override async Task OnInitializedAsync()
     {
-        // Read player name from query string (passed from Home.razor)
+        // Read player name and deviceId from query string (passed from Home.razor)
         var uri = new Uri(Navigation.Uri);
-        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("name", out var nameValue))
-        {
+        var query = QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.TryGetValue("name", out var nameValue))
             _playerName = nameValue.ToString();
-            if (!string.IsNullOrWhiteSpace(_playerName))
-            {
-                await JoinGame();
-            }
+
+        if (query.TryGetValue("deviceId", out var deviceValue))
+            _deviceId = deviceValue.ToString();
+
+        // Generate a deviceId if not provided (direct navigation to /game)
+        if (string.IsNullOrEmpty(_deviceId))
+            _deviceId = Guid.NewGuid().ToString();
+
+        if (!string.IsNullOrWhiteSpace(_playerName))
+        {
+            await JoinGame();
         }
     }
 
@@ -501,7 +510,7 @@ else if (_gameState?.Phase != GamePhase.Ended || !_showScoreboard)
         {
             _connectionLost = false;
             if (_hubConnection != null && !string.IsNullOrEmpty(_playerName))
-                await _hubConnection.SendAsync("JoinGame", _playerName);
+                await _hubConnection.SendAsync("JoinGame", _playerName, _deviceId);
             await InvokeAsync(StateHasChanged);
         };
 
@@ -514,7 +523,7 @@ else if (_gameState?.Phase != GamePhase.Ended || !_showScoreboard)
         };
 
         await _hubConnection.StartAsync();
-        await _hubConnection.SendAsync("JoinGame", _playerName);
+        await _hubConnection.SendAsync("JoinGame", _playerName, _deviceId);
         _isConnected = true;
     }
 
