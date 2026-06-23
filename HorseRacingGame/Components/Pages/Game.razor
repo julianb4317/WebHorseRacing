@@ -1,0 +1,688 @@
+@page "/game"
+@using Microsoft.AspNetCore.SignalR.Client
+@using HorseRacingGame.Models
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+
+<PageTitle>Game - Horse Racing</PageTitle>
+
+<!-- CONNECTION ERROR BANNER -->
+@if (_connectionLost)
+{
+    <div class="connection-banner">
+        @if (_serverDisconnected)
+        {
+            <span>&#x1F50C; Server disconnected &mdash; please refresh the page</span>
+        }
+        else
+        {
+            <span>&#x26A0;&#xFE0F; Connection lost &mdash; attempting to reconnect...</span>
+        }
+    </div>
+}
+
+<!-- TOAST NOTIFICATIONS -->
+@if (_toasts.Count > 0)
+{
+    <div class="toast-container">
+        @foreach (var toast in _toasts)
+        {
+            <div class="toast-notification @toast.Type">@toast.Message</div>
+        }
+    </div>
+}
+
+<!-- WINNER CELEBRATION MODAL -->
+@if (_showCelebration && _gameState?.WinningHorse != null)
+{
+    <div class="celebration-overlay">
+        <div class="confetti-container">
+            @for (int i = 0; i < 50; i++)
+            {
+                <div class="confetti-piece" style="--i: @i;"></div>
+            }
+        </div>
+        <div class="celebration-modal">
+            <h1 class="celebration-title">🏆 WINNER! 🏆</h1>
+            <div class="celebration-horse">Horse #@_gameState.WinningHorse.Number</div>
+            @if (_gameState.WinningPlayers.Count > 0)
+            {
+                <div class="celebration-winners">
+                    <h4>Winners:</h4>
+                    @foreach (var winner in _gameState.WinningPlayers)
+                    {
+                        <span class="winner-name">@winner.Name</span>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="celebration-winners">
+                    <h4>No card holders — pot carries over!</h4>
+                </div>
+            }
+            <div class="celebration-pot">Pot Won: $@_gameState.CentralPot.ToString("F2")</div>
+            <div class="celebration-balances mt-3">
+                <h5>Updated Balances:</h5>
+                @foreach (var p in _gameState.Players.OrderByDescending(p => p.Balance))
+                {
+                    <div class="d-flex justify-content-between px-3">
+                        <span>@p.Name</span>
+                        <span class="@(p.Balance >= 100m ? "text-success" : "text-danger")">$@p.Balance.ToString("F2")</span>
+                    </div>
+                }
+            </div>
+            @if (_currentPlayer?.IsHost == true)
+            {
+                <div class="celebration-buttons mt-3">
+                    <button class="btn btn-success btn-lg me-2" @onclick="PlayAgain">▶️ Play Again</button>
+                    <button class="btn btn-outline-danger btn-lg" @onclick="EndSession">⏹️ End Session</button>
+                </div>
+            }
+            <button class="btn btn-outline-light mt-3" @onclick="DismissCelebration">Close</button>
+        </div>
+    </div>
+}
+
+<!-- FINAL SCOREBOARD (Ended phase, after celebration dismissed) -->
+@if (_gameState?.Phase == GamePhase.Ended && !_showCelebration && _showScoreboard)
+{
+    <div class="scoreboard-container">
+        <div class="scoreboard-card card">
+            <div class="card-header text-center">
+                <h2>🏁 Final Scoreboard</h2>
+            </div>
+            <div class="card-body">
+                <table class="table table-dark table-hover">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Player</th>
+                            <th class="text-end">Balance</th>
+                            <th class="text-end">Net</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{ int rank = 1; }
+                        @foreach (var p in _gameState.Players.OrderByDescending(p => p.Balance))
+                        {
+                            var net = p.Balance - 100m;
+                            <tr>
+                                <td>
+                                    @if (rank == 1) { <span>👑</span> } else { @rank }
+                                </td>
+                                <td>@p.Name</td>
+                                <td class="text-end font-monospace">$@p.Balance.ToString("F2")</td>
+                                <td class="text-end font-monospace @(net >= 0 ? "text-success" : "text-danger")">
+                                    @(net >= 0 ? "+" : "")$@net.ToString("F2")
+                                </td>
+                            </tr>
+                            rank++;
+                        }
+                    </tbody>
+                </table>
+                <div class="text-center text-muted mt-2">
+                    <div>Rounds played: @_gameState.RoundNumber</div>
+                    <div class="mt-3 fs-5">🎉 Thanks for playing!</div>
+                </div>
+                @if (_currentPlayer?.IsHost == true)
+                {
+                    <div class="text-center mt-3">
+                        <button class="btn btn-success me-2" @onclick="PlayAgain">▶️ Play Again</button>
+                        <button class="btn btn-outline-secondary" @onclick="DismissScoreboard">Close</button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@if (!_isConnected)
+{
+    <div class="text-center py-5">
+        <div class="mb-3">
+            <label for="playerName" class="form-label fw-bold">Enter your name to join:</label>
+            <input id="playerName" @bind="_playerName" @onkeydown="HandleKeyDown"
+                class="form-control w-50 mx-auto" placeholder="Your name" />
+        </div>
+        <button class="btn btn-primary btn-lg" @onclick="JoinGame"
+            disabled="@string.IsNullOrWhiteSpace(_playerName)">
+            Join Game
+        </button>
+    </div>
+}
+else if (_gameState?.Phase != GamePhase.Ended || !_showScoreboard)
+{
+    <!-- PHASE BANNER -->
+    <div class="phase-banner mb-3">
+        @if (_gameState?.Phase == GamePhase.Lobby)
+        {
+            <span>🏠 Lobby — Waiting for players...</span>
+        }
+        else if (_gameState?.Phase == GamePhase.Dealing)
+        {
+            <span>🃏 Dealing cards...</span>
+        }
+        else if (_gameState?.Phase == GamePhase.Scratching)
+        {
+            <span>✂️ Scratching Phase: @(_gameState.ScratchCount) of 4 horses scratched</span>
+        }
+        else if (_gameState?.Phase == GamePhase.Racing)
+        {
+            <span>🏁 Race in Progress — Round @(_gameState.RoundNumber)</span>
+        }
+        else if (_gameState?.Phase == GamePhase.Payout)
+        {
+            <span>💰 Calculating payouts...</span>
+        }
+        else if (_gameState?.Phase == GamePhase.Ended)
+        {
+            <span>🎉 Race Over! @(_gameState.WinningHorse != null ? $"Horse #{_gameState.WinningHorse.Number} wins!" : "")</span>
+        }
+    </div>
+
+    <div class="row">
+        <!-- MAIN GAME AREA -->
+        <div class="col-lg-9">
+            <!-- POT & DICE ROW -->
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <!-- POT -->
+                <div class="pot-display @(_potBumped ? "pot-bump" : "")">
+                    🏆 Pot: <strong>$@(_gameState?.CentralPot.ToString("F2") ?? "0.00")</strong>
+                </div>
+
+                <!-- DICE (CSS Grid Dot Patterns) -->
+                <div class="dice-display text-center">
+                    <div class="dice-row">
+                        <div class="die @(_diceRolling ? "rolling" : "")">
+                            @if (_gameState?.LastDie1 != null)
+                            {
+                                @((MarkupString)GetDieFaceHtml(_gameState.LastDie1.Value))
+                            }
+                            else
+                            {
+                                @((MarkupString)GetDieFaceHtml(1))
+                            }
+                        </div>
+                        <div class="die @(_diceRolling ? "rolling" : "")">
+                            @if (_gameState?.LastDie2 != null)
+                            {
+                                @((MarkupString)GetDieFaceHtml(_gameState.LastDie2.Value))
+                            }
+                            else
+                            {
+                                @((MarkupString)GetDieFaceHtml(1))
+                            }
+                        </div>
+                        <span class="dice-sum">= @(_gameState?.LastSum?.ToString() ?? "?")</span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(_gameState?.LastRollResult))
+                    {
+                        <div class="roll-result">@_gameState.LastRollResult</div>
+                    }
+                </div>
+
+                <!-- TURN INDICATOR -->
+                <div class="turn-indicator">
+                    @if (_gameState?.Phase == GamePhase.Scratching || _gameState?.Phase == GamePhase.Racing)
+                    {
+                        var currentTurnPlayer = GetCurrentTurnPlayer();
+                        if (currentTurnPlayer != null && _currentPlayer != null && currentTurnPlayer.Id == _currentPlayer.Id)
+                        {
+                            <button class="btn roll-btn" @onclick="RollDice">
+                                🎲 Roll Dice
+                            </button>
+                        }
+                        else
+                        {
+                            <span class="waiting-text">Waiting for <strong>@(currentTurnPlayer?.Name ?? "...")</strong> to roll...</span>
+                        }
+                    }
+                    else if (_gameState?.Phase == GamePhase.Lobby && _currentPlayer?.IsHost == true)
+                    {
+                        <button class="btn btn-success btn-lg" @onclick="StartGame">▶️ Start Game</button>
+                    }
+                    else if (_gameState?.Phase == GamePhase.Ended && _currentPlayer?.IsHost == true)
+                    {
+                        <button class="btn btn-outline-primary" @onclick="PlayAgain">🔄 New Game</button>
+                    }
+                </div>
+            </div>
+
+            <!-- RACE TRACK -->
+            <div class="race-track card mb-3">
+                <div class="card-body p-2">
+                    @if (_gameState?.Horses != null)
+                    {
+                        @foreach (var horse in _gameState.Horses)
+                        {
+                            var isLeader = !horse.Scratched && horse == GetLeadingHorse();
+                            var isWinner = _gameState.WinningHorse?.Number == horse.Number;
+                            <div class="track-lane @(horse.Scratched ? "scratched" : "") @(isLeader ? "leading" : "") @(isWinner ? "winner" : "")">
+                                <div class="lane-number">@horse.Number</div>
+                                <div class="lane-track">
+                                    @for (int i = 0; i < horse.TotalSpaces; i++)
+                                    {
+                                        var spaceIndex = i;
+                                        <div class="track-space @(spaceIndex < horse.Position ? "passed" : "") @(spaceIndex == horse.Position && !horse.Scratched ? "current" : "")">
+                                            @if (spaceIndex == horse.Position && !horse.Scratched)
+                                            {
+                                                <span class="horse-icon">🐎</span>
+                                            }
+                                        </div>
+                                    }
+                                    <div class="finish-marker">🏁</div>
+                                </div>
+                                @if (horse.Scratched)
+                                {
+                                    <div class="scratch-overlay">SCRATCHED</div>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+
+            <!-- SCRATCHED HORSES PANEL -->
+            @if (_gameState?.Horses?.Any(h => h.Scratched) == true)
+            {
+                <div class="card mb-3">
+                    <div class="card-header fw-bold">🚫 Scratched Horses</div>
+                    <div class="card-body p-2">
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var horse in _gameState.Horses.Where(h => h.Scratched).OrderBy(h => h.ScratchOrder))
+                            {
+                                <span class="badge bg-danger fs-6">
+                                    🚫 Horse #@horse.Number — $@horse.ScratchPenalty per roll
+                                </span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- HOST CONTROLS -->
+            @if (_currentPlayer?.IsHost == true && _gameState?.Phase != GamePhase.Lobby)
+            {
+                <div class="d-flex gap-2 mb-3">
+                    @if (_gameState?.Phase == GamePhase.Racing || _gameState?.Phase == GamePhase.Scratching)
+                    {
+                        <button class="btn btn-sm btn-outline-danger" @onclick="EndGame">⏹️ End Game</button>
+                    }
+                    @if (_gameState?.Phase == GamePhase.Ended)
+                    {
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="PlayAgain">🔄 Reset to Lobby</button>
+                    }
+                </div>
+            }
+
+            <!-- PLAYER PERSONAL PANEL -->
+            @if (_currentPlayer != null)
+            {
+                <div class="card mb-3">
+                    <div class="card-header fw-bold">👤 @_currentPlayer.Name</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <!-- BALANCE -->
+                            <div class="col-md-3 text-center mb-2">
+                                <div class="small text-muted">My Balance</div>
+                                <div class="balance-display @(_currentPlayer.Balance >= 100m ? "text-success" : "text-danger")">
+                                    $@_currentPlayer.Balance.ToString("F2")
+                                </div>
+                            </div>
+
+                            <!-- MY HORSES -->
+                            <div class="col-md-3 mb-2">
+                                <div class="small text-muted">My Horses</div>
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach (var horseNum in GetMyHorseNumbers())
+                                    {
+                                        var isScratchedHorse = _gameState?.Horses?.FirstOrDefault(h => h.Number == horseNum)?.Scratched == true;
+                                        <span class="badge @(isScratchedHorse ? "bg-secondary text-decoration-line-through" : "bg-primary")">
+                                            #@horseNum
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+
+                            <!-- BALANCE HISTORY -->
+                            <div class="col-md-6 mb-2">
+                                <div class="small text-muted">Balance History</div>
+                                @if (_currentPlayer.BalanceHistory.Count > 0)
+                                {
+                                    <ul class="list-unstyled small mb-0">
+                                        @foreach (var entry in _currentPlayer.BalanceHistory.TakeLast(5).Reverse())
+                                        {
+                                            <li class="@(entry.StartsWith("+") ? "text-success" : "text-danger")">@entry</li>
+                                        }
+                                    </ul>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">No changes yet</span>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- MY CARDS -->
+                        <div class="mt-2">
+                            <div class="small text-muted mb-1">My Cards</div>
+                            <div class="d-flex flex-wrap gap-1">
+                                @foreach (var card in _currentPlayer.Cards)
+                                {
+                                    var isScratchedCard = !card.IsActive;
+                                    var isLeadingCard = !isScratchedCard && GetLeadingHorse()?.Number == card.Value;
+                                    var suitClass = (card.Suit == "Hearts" || card.Suit == "Diamonds") ? "red-suit" : "black-suit";
+                                    <span class="playing-card @suitClass @(isScratchedCard ? "faded" : "") @(isLeadingCard ? "leading-card" : "")">
+                                        @card.Display
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- SIDEBAR -->
+        <div class="col-lg-3">
+            <!-- PLAYERS PANEL -->
+            <div class="card mb-3">
+                <div class="card-header fw-bold">👥 Players</div>
+                <ul class="list-group list-group-flush">
+                    @if (_gameState?.Players != null)
+                    {
+                        @foreach (var player in _gameState.Players)
+                        {
+                            var isTurn = IsPlayersTurn(player);
+                            <li class="list-group-item d-flex justify-content-between align-items-center @(isTurn ? "list-group-item-warning" : "") @(!player.IsConnected ? "text-muted" : "")">
+                                <span>
+                                    @player.Name
+                                    @if (player.IsHost) { <span class="badge bg-warning text-dark ms-1">Host</span> }
+                                    @if (!player.IsConnected) { <span class="badge bg-secondary ms-1">DC</span> }
+                                    @if (isTurn) { <span class="ms-1">🎲</span> }
+                                </span>
+                                <span class="badge bg-success">$@player.Balance.ToString("F2")</span>
+                            </li>
+                        }
+                    }
+                </ul>
+            </div>
+
+            <!-- CHAT PANEL -->
+            <div class="card mb-3">
+                <div class="card-header fw-bold">💬 Chat</div>
+                <div class="card-body chat-body p-2">
+                    @if (_gameState?.ChatMessages != null)
+                    {
+                        @foreach (var msg in _gameState.ChatMessages.TakeLast(50))
+                        {
+                            <div class="chat-msg small">@msg</div>
+                        }
+                    }
+                </div>
+                <div class="card-footer p-2">
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control" @bind="_chatMessage"
+                            @onkeydown="HandleChatKeyDown" placeholder="Type a message..." />
+                        <button class="btn btn-outline-primary" @onclick="SendChat">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private HubConnection? _hubConnection;
+    private string _playerName = string.Empty;
+    private bool _isConnected;
+    private GameState? _gameState;
+    private Player? _currentPlayer;
+    private string _chatMessage = string.Empty;
+    private bool _showCelebration;
+    private bool _showScoreboard;
+    private bool _diceRolling;
+    private bool _potBumped;
+    private bool _connectionLost;
+    private bool _serverDisconnected;
+    private List<ToastMessage> _toasts = new();
+
+    private record ToastMessage(string Message, string Type);
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_playerName))
+            await JoinGame();
+    }
+
+    private async Task HandleChatKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await SendChat();
+    }
+
+    private async Task JoinGame()
+    {
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/gamehub"))
+            .WithAutomaticReconnect(new[] {
+                TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3),
+                TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(5),
+                TimeSpan.FromSeconds(10) })
+            .Build();
+
+        SetupHubEvents();
+
+        _hubConnection.Reconnecting += (ex) =>
+        {
+            _connectionLost = true;
+            _serverDisconnected = false;
+            InvokeAsync(StateHasChanged);
+            return Task.CompletedTask;
+        };
+
+        _hubConnection.Reconnected += async (id) =>
+        {
+            _connectionLost = false;
+            if (_hubConnection != null && !string.IsNullOrEmpty(_playerName))
+                await _hubConnection.SendAsync("JoinGame", _playerName);
+            await InvokeAsync(StateHasChanged);
+        };
+
+        _hubConnection.Closed += (ex) =>
+        {
+            _connectionLost = true;
+            _serverDisconnected = true;
+            InvokeAsync(StateHasChanged);
+            return Task.CompletedTask;
+        };
+
+        await _hubConnection.StartAsync();
+        await _hubConnection.SendAsync("JoinGame", _playerName);
+        _isConnected = true;
+    }
+
+    private void SetupHubEvents()
+    {
+        if (_hubConnection == null) return;
+
+        _hubConnection.On<GameState>("StateUpdated", (state) =>
+        {
+            _gameState = state;
+            if (_currentPlayer != null)
+                _currentPlayer = state.Players.FirstOrDefault(p => p.Id == _currentPlayer.Id) ?? _currentPlayer;
+            InvokeAsync(StateHasChanged);
+        });
+
+        _hubConnection.On<string>("PlayerJoined", (name) => InvokeAsync(StateHasChanged));
+        _hubConnection.On<string>("PlayerLeft", (name) => InvokeAsync(StateHasChanged));
+
+        _hubConnection.On<int, int, int, string>("DiceRolled", async (die1, die2, sum, result) =>
+        {
+            _diceRolling = true;
+            await InvokeAsync(StateHasChanged);
+            await Task.Delay(800);
+            _diceRolling = false;
+            _potBumped = true;
+            await InvokeAsync(StateHasChanged);
+            await Task.Delay(400);
+            _potBumped = false;
+            await InvokeAsync(StateHasChanged);
+        });
+
+        _hubConnection.On<int, decimal>("HorseScratched", (horseNumber, penalty) =>
+            InvokeAsync(StateHasChanged));
+
+        _hubConnection.On<int, int>("HorseMoved", (horseNumber, newPosition) =>
+            InvokeAsync(StateHasChanged));
+
+        _hubConnection.On<int, List<string>>("RaceWon", (horseNumber, winnerNames) =>
+        {
+            _showCelebration = true;
+            _showScoreboard = true;
+            InvokeAsync(StateHasChanged);
+        });
+
+        _hubConnection.On<List<object>>("PayoutSummary", (balanceChanges) =>
+            InvokeAsync(StateHasChanged));
+
+        _hubConnection.On("GameReset", () =>
+        {
+            _showCelebration = false;
+            _showScoreboard = false;
+            InvokeAsync(StateHasChanged);
+        });
+
+        _hubConnection.On<string, string>("ChatMessage", (playerName, message) =>
+            InvokeAsync(StateHasChanged));
+
+        _hubConnection.On<string>("Error", (message) =>
+        {
+            ShowToast(message, "error");
+            InvokeAsync(StateHasChanged);
+        });
+    }
+
+    private async void ShowToast(string message, string type)
+    {
+        var toast = new ToastMessage(message, type);
+        _toasts.Add(toast);
+        await InvokeAsync(StateHasChanged);
+        await Task.Delay(2000);
+        _toasts.Remove(toast);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task StartGame()
+    {
+        if (_hubConnection is not null)
+            await _hubConnection.SendAsync("StartGame");
+    }
+
+    private async Task RollDice()
+    {
+        if (_hubConnection is not null)
+            await _hubConnection.SendAsync("RollDice");
+    }
+
+    private async Task EndGame()
+    {
+        if (_hubConnection is not null)
+            await _hubConnection.SendAsync("EndGame");
+    }
+
+    private async Task PlayAgain()
+    {
+        _showCelebration = false;
+        _showScoreboard = false;
+        if (_hubConnection is not null)
+            await _hubConnection.SendAsync("ResetGame");
+    }
+
+    private async Task EndSession()
+    {
+        _showCelebration = false;
+        _showScoreboard = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void DismissCelebration()
+    {
+        _showCelebration = false;
+        _showScoreboard = true;
+    }
+
+    private void DismissScoreboard()
+    {
+        _showScoreboard = false;
+    }
+
+    private async Task SendChat()
+    {
+        if (_hubConnection is not null && !string.IsNullOrWhiteSpace(_chatMessage))
+        {
+            await _hubConnection.SendAsync("SendChat", _chatMessage);
+            _chatMessage = string.Empty;
+        }
+    }
+
+    // ─── HELPERS ─────────────────────────────────────────────────────────────
+
+    private string GetDieFaceHtml(int value)
+    {
+        // CSS grid-based dot patterns
+        return value switch
+        {
+            1 => "<div class='die-face'><span class='dot c'></span></div>",
+            2 => "<div class='die-face'><span class='dot tl'></span><span class='dot br'></span></div>",
+            3 => "<div class='die-face'><span class='dot tl'></span><span class='dot c'></span><span class='dot br'></span></div>",
+            4 => "<div class='die-face'><span class='dot tl'></span><span class='dot tr'></span><span class='dot bl'></span><span class='dot br'></span></div>",
+            5 => "<div class='die-face'><span class='dot tl'></span><span class='dot tr'></span><span class='dot c'></span><span class='dot bl'></span><span class='dot br'></span></div>",
+            6 => "<div class='die-face'><span class='dot tl'></span><span class='dot tr'></span><span class='dot ml'></span><span class='dot mr'></span><span class='dot bl'></span><span class='dot br'></span></div>",
+            _ => "<div class='die-face'><span class='dot c'></span></div>"
+        };
+    }
+
+    private Player? GetCurrentTurnPlayer()
+    {
+        if (_gameState == null) return null;
+        var connected = _gameState.Players.Where(p => p.IsConnected).ToList();
+        if (connected.Count == 0) return null;
+        return connected[_gameState.CurrentPlayerIndex % connected.Count];
+    }
+
+    private bool IsPlayersTurn(Player player)
+    {
+        if (_gameState?.Phase != GamePhase.Scratching && _gameState?.Phase != GamePhase.Racing)
+            return false;
+        var current = GetCurrentTurnPlayer();
+        return current?.Id == player.Id;
+    }
+
+    private Horse? GetLeadingHorse()
+    {
+        if (_gameState?.Horses == null) return null;
+        return _gameState.Horses
+            .Where(h => !h.Scratched && h.Position > 0)
+            .OrderByDescending(h => (double)h.Position / h.TotalSpaces)
+            .FirstOrDefault();
+    }
+
+    private List<int> GetMyHorseNumbers()
+    {
+        if (_currentPlayer?.Cards == null) return new();
+        return _currentPlayer.Cards
+            .Where(c => c.IsActive)
+            .Select(c => c.Value)
+            .Distinct()
+            .OrderBy(n => n)
+            .ToList();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+            await _hubConnection.DisposeAsync();
+    }
+}

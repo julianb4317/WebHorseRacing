@@ -1,0 +1,49 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\julianb\\source\\repos\\WebHorseRacing\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{C64EFBD4-0E3E-4EF8-8536-A32CE494A632}|WebHorseRacing\\WebHorseRacing.csproj|c:\\users\\julianb\\source\\repos\\webhorseracing\\webhorseracing\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C64EFBD4-0E3E-4EF8-8536-A32CE494A632}|WebHorseRacing\\WebHorseRacing.csproj|solutionrelative:webhorseracing\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 2,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\julianb\\source\\repos\\WebHorseRacing\\WebHorseRacing\\Program.cs",
+              "RelativeDocumentMoniker": "WebHorseRacing\\Program.cs",
+              "ToolTip": "C:\\Users\\julianb\\source\\repos\\WebHorseRacing\\WebHorseRacing\\Program.cs",
+              "RelativeToolTip": "WebHorseRacing\\Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-06-22T15:57:16.268Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,335 @@
+@page "/"
+@using Microsoft.AspNetCore.SignalR.Client
+@using HorseRacingGame.Models
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+
+<PageTitle>Horse Racing - Join</PageTitle>
+
+<!-- Reconnecting Overlay -->
+@if (_connectionState == ConnectionState.Reconnecting)
+{
+    <div class="reconnect-overlay">
+        <div class="reconnect-content">
+            <div class="spinner-border text-warning mb-2" role="status"></div>
+            <div>Reconnecting...</div>
+        </div>
+    </div>
+}
+
+@if (!_hasJoined)
+{
+    <!-- JOIN SCREEN -->
+    <div class="d-flex justify-content-center align-items-center min-vh-75">
+        <div class="join-card card text-center">
+            <div class="card-body p-5">
+                <h1 class="mb-3">🐎 Horse Racing</h1>
+                <p class="text-muted mb-4">A multiplayer card-based dice racing game</p>
+
+                @if (_gameInProgress)
+                {
+                    <div class="alert alert-warning">
+                        ⏳ Game in progress — please wait for the next round
+                    </div>
+                }
+
+                <div class="mb-3">
+                    <input type="text" class="form-control form-control-lg text-center" @bind="_playerName"
+                        @bind:event="oninput" @onkeydown="HandleKeyDown" placeholder="Enter your name"
+                        maxlength="20" />
+                    <small class="text-muted">@(_playerName.Length)/20 characters</small>
+                </div>
+
+                <button class="btn btn-primary btn-lg w-100" @onclick="JoinGame"
+                    disabled="@(!CanJoin)">
+                    @if (_connectionState == ConnectionState.Connecting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        <span>Connecting...</span>
+                    }
+                    else
+                    {
+                        <span>Join Game</span>
+                    }
+                </button>
+
+                <!-- Connection Status -->
+                <div class="mt-3">
+                    @if (_connectionState == ConnectionState.Connected)
+                    {
+                        <span class="badge bg-success">● Connected</span>
+                    }
+                    else if (_connectionState == ConnectionState.Connecting)
+                    {
+                        <span class="badge bg-warning text-dark">● Connecting...</span>
+                    }
+                    else if (_connectionState == ConnectionState.Disconnected)
+                    {
+                        <span class="badge bg-danger">● Disconnected</span>
+                    }
+                </div>
+
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="alert alert-danger mt-3 mb-0">@_errorMessage</div>
+                }
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <!-- WAITING ROOM -->
+    <div class="d-flex justify-content-center align-items-start min-vh-75 pt-4">
+        <div class="lobby-card card" style="min-width: 400px; max-width: 500px;">
+            <div class="card-header text-center">
+                <h3 class="mb-0">🏠 Game Lobby</h3>
+            </div>
+            <div class="card-body">
+                @if (_gameState?.Phase == GamePhase.Lobby)
+                {
+                    <p class="text-center text-muted">Waiting for host to start the game...</p>
+
+                    <!-- Player Count -->
+                    <div class="text-center mb-3">
+                        <span class="badge bg-info fs-6">
+                            @(_gameState?.Players.Count(p => p.IsConnected) ?? 0) of 6 players joined
+                        </span>
+                        @if ((_gameState?.Players.Count(p => p.IsConnected) ?? 0) < 2)
+                        {
+                            <div class="text-warning small mt-1">Minimum 2 players required to start</div>
+                        }
+                    </div>
+
+                    <!-- Player List -->
+                    <ul class="list-group mb-3">
+                        @if (_gameState?.Players != null)
+                        {
+                            @foreach (var player in _gameState.Players.Where(p => p.IsConnected))
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>
+                                        @player.Name
+                                        @if (player.IsHost)
+                                        {
+                                            <span class="ms-1">👑</span>
+                                        }
+                                        @if (player.Id == _currentPlayer?.Id)
+                                        {
+                                            <span class="badge bg-secondary ms-1">You</span>
+                                        }
+                                    </span>
+                                    <span class="badge bg-success">$@player.Balance.ToString("F2")</span>
+                                </li>
+                            }
+                        }
+                    </ul>
+
+                    <!-- Host Controls -->
+                    @if (_currentPlayer?.IsHost == true)
+                    {
+                        <button class="btn btn-success btn-lg w-100" @onclick="StartGame"
+                            disabled="@((_gameState?.Players.Count(p => p.IsConnected) ?? 0) < 2)">
+                            ▶️ Start Game
+                        </button>
+                    }
+                }
+                else
+                {
+                    <!-- Game has moved past lobby — redirect -->
+                    <p class="text-center">Game is starting... Redirecting to the board.</p>
+                }
+            </div>
+
+            <!-- HOST CONTROLS PANEL (visible throughout entire game) -->
+            @if (_currentPlayer?.IsHost == true)
+            {
+                <div class="card-footer">
+                    <div class="d-flex gap-2 justify-content-center flex-wrap">
+                        @if (_gameState?.Phase == GamePhase.Lobby)
+                        {
+                            <button class="btn btn-success" @onclick="StartGame"
+                                disabled="@((_gameState?.Players.Count(p => p.IsConnected) ?? 0) < 2)">
+                                ▶️ Start Game
+                            </button>
+                        }
+                        @if (_gameState?.Phase == GamePhase.Scratching || _gameState?.Phase == GamePhase.Racing)
+                        {
+                            <button class="btn btn-danger" @onclick="EndGame">⏹️ End Game</button>
+                        }
+                        @if (_gameState?.Phase == GamePhase.Ended || _gameState?.Phase == GamePhase.Payout)
+                        {
+                            <button class="btn btn-outline-primary" @onclick="ResetGame">🔄 Reset Game</button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private HubConnection? _hubConnection;
+    private string _playerName = string.Empty;
+    private bool _hasJoined;
+    private bool _gameInProgress;
+    private string _errorMessage = string.Empty;
+    private ConnectionState _connectionState = ConnectionState.Disconnected;
+    private GameState? _gameState;
+    private Player? _currentPlayer;
+
+    private bool CanJoin =>
+        !string.IsNullOrWhiteSpace(_playerName) &&
+        _playerName.Length <= 20 &&
+        _connectionState != ConnectionState.Connecting;
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && CanJoin)
+            await JoinGame();
+    }
+
+    private async Task JoinGame()
+    {
+        if (!CanJoin) return;
+
+        _errorMessage = string.Empty;
+        _connectionState = ConnectionState.Connecting;
+        StateHasChanged();
+
+        try
+        {
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.ToAbsoluteUri("/gamehub"))
+                .WithAutomaticReconnect(new[] { TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10) })
+                .Build();
+
+            SetupHubEventHandlers();
+
+            await _hubConnection.StartAsync();
+            _connectionState = ConnectionState.Connected;
+
+            await _hubConnection.SendAsync("JoinGame", _playerName.Trim());
+        }
+        catch (Exception ex)
+        {
+            _connectionState = ConnectionState.Disconnected;
+            _errorMessage = $"Failed to connect: {ex.Message}";
+        }
+
+        StateHasChanged();
+    }
+
+    private void SetupHubEventHandlers()
+    {
+        if (_hubConnection == null) return;
+
+        _hubConnection.On<GameState>("StateUpdated", (state) =>
+        {
+            _gameState = state;
+
+            // Update current player reference
+            if (_currentPlayer != null)
+            {
+                _currentPlayer = state.Players.FirstOrDefault(p => p.Id == _currentPlayer.Id) ?? _currentPlayer;
+            }
+
+            // Check if game is in progress (for join screen message)
+            _gameInProgress = state.Phase == GamePhase.Racing || state.Phase == GamePhase.Scratching;
+
+            // If game has moved past lobby, navigate to /game
+            if (_hasJoined && state.Phase != GamePhase.Lobby)
+            {
+                InvokeAsync(() => Navigation.NavigateTo("/game"));
+            }
+
+            InvokeAsync(StateHasChanged);
+        });
+
+        _hubConnection.On<string>("PlayerJoined", (name) =>
+        {
+            // Mark as joined when we receive this for ourselves
+            if (!_hasJoined)
+            {
+                _hasJoined = true;
+            }
+            InvokeAsync(StateHasChanged);
+        });
+
+        _hubConnection.On<string>("PlayerLeft", (name) =>
+        {
+            InvokeAsync(StateHasChanged);
+        });
+
+        _hubConnection.On("GameReset", () =>
+        {
+            InvokeAsync(StateHasChanged);
+        });
+
+        _hubConnection.On<string>("Error", (message) =>
+        {
+            _errorMessage = message;
+            InvokeAsync(StateHasChanged);
+        });
+
+        // Reconnection events
+        _hubConnection.Reconnecting += (ex) =>
+        {
+            _connectionState = ConnectionState.Reconnecting;
+            InvokeAsync(StateHasChanged);
+            return Task.CompletedTask;
+        };
+
+        _hubConnection.Reconnected += async (connectionId) =>
+        {
+            _connectionState = ConnectionState.Connected;
+            // Re-join with same name to restore player state
+            if (_hubConnection != null && !string.IsNullOrEmpty(_playerName))
+            {
+                await _hubConnection.SendAsync("JoinGame", _playerName.Trim());
+            }
+            await InvokeAsync(StateHasChanged);
+        };
+
+        _hubConnection.Closed += (ex) =>
+        {
+            _connectionState = ConnectionState.Disconnected;
+            InvokeAsync(StateHasChanged);
+            return Task.CompletedTask;
+        };
+    }
+
+    private async Task StartGame()
+    {
+        if (_hubConnection is not null)
+            await _hubConnection.SendAsync("StartGame");
+    }
+
+    private async Task EndGame()
+    {
+        if (_hubConnection is not null)
+            await _hubConnection.SendAsync("EndGame");
+    }
+
+    private async Task ResetGame()
+    {
+        if (_hubConnection is not null)
+            await _hubConnection.SendAsync("ResetGame");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+    }
+
+    private enum ConnectionState
+    {
+        Disconnected,
+        Connecting,
+        Connected,
+        Reconnecting
+    }
+}

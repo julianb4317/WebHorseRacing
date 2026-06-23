@@ -1,0 +1,1077 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   HORSE RACING GAME — DERBY THEME
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── FOUNDATIONS ─────────────────────────────────────────────────────────── */
+
+:root {
+    --felt-green: #35654d;
+    --felt-dark: #2a4f3d;
+    --felt-darker: #1e3a2d;
+    --gold: #FFD700;
+    --gold-dim: #b8960c;
+    --gold-glow: rgba(255, 215, 0, 0.35);
+    --red-suit: #d32f2f;
+    --black-suit: #1a1a1a;
+    --text-primary: #ffffff;
+    --text-muted: #b8c9b8;
+    --card-bg: #2a4f3d;
+    --card-border: #3d7a5c;
+    --danger: #dc3545;
+    --success: #28a745;
+    --warning: #ffc107;
+    --info: #17a2b8;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--felt-green);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Impact', 'Arial Black', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+/* ─── LAYOUT ──────────────────────────────────────────────────────────────── */
+
+.container-fluid {
+    padding: 0 1rem;
+}
+
+header {
+    background: var(--felt-darker);
+    border-bottom: 2px solid var(--gold-dim) !important;
+}
+
+header h1 {
+    color: var(--gold);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.min-vh-75 {
+    min-height: 75vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ─── PHASE BANNER ────────────────────────────────────────────────────────── */
+
+.phase-banner {
+    text-align: center;
+    font-size: 1.4rem;
+    font-weight: bold;
+    padding: 0.75rem 1rem;
+    background: var(--felt-darker);
+    border-radius: 8px;
+    border: 2px solid var(--gold-dim);
+    color: var(--gold);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* ─── POT DISPLAY ─────────────────────────────────────────────────────────── */
+
+.pot-display {
+    font-size: 1.3rem;
+    padding: 0.6rem 1.2rem;
+    background: var(--felt-darker);
+    border-radius: 8px;
+    border: 2px solid var(--gold);
+    box-shadow: 0 0 12px var(--gold-glow);
+}
+
+.pot-display strong {
+    color: var(--gold);
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1.6rem;
+}
+
+.pot-bump {
+    animation: potBump 0.4s ease-out;
+}
+
+@keyframes potBump {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+
+/* ─── DICE DISPLAY ────────────────────────────────────────────────────────── */
+
+.dice-display {
+    padding: 0.5rem 1rem;
+    background: var(--felt-dark);
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+}
+
+.dice {
+    font-size: 3rem;
+    margin: 0 0.3rem;
+    display: inline-block;
+    transition: transform 0.2s ease;
+}
+
+.dice.rolling {
+    animation: diceShake 0.8s ease-in-out;
+}
+
+@keyframes diceShake {
+    0%   { transform: rotate(0deg) scale(1); }
+    10%  { transform: rotate(15deg) scale(1.1); }
+    20%  { transform: rotate(-15deg) scale(1.1); }
+    30%  { transform: rotate(20deg) scale(1.15); }
+    40%  { transform: rotate(-20deg) scale(1.15); }
+    50%  { transform: rotate(15deg) scale(1.1); }
+    60%  { transform: rotate(-10deg) scale(1.1); }
+    70%  { transform: rotate(10deg) scale(1.05); }
+    80%  { transform: rotate(-5deg) scale(1.02); }
+    90%  { transform: rotate(3deg) scale(1); }
+    100% { transform: rotate(0deg) scale(1); }
+}
+
+.dice-sum {
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin-left: 0.5rem;
+    color: var(--gold);
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.roll-result {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+    font-style: italic;
+}
+
+/* ─── TURN INDICATOR & ROLL BUTTON ────────────────────────────────────────── */
+
+.turn-indicator {
+    text-align: center;
+}
+
+.roll-btn {
+    font-size: 1.3rem;
+    padding: 0.8rem 2.5rem;
+    background: linear-gradient(135deg, #28a745, #1e7e34);
+    border: 2px solid #1e7e34;
+    color: #fff;
+    font-weight: bold;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    animation: rollPulse 1.5s infinite;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+}
+
+.roll-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.6);
+    background: linear-gradient(135deg, #34ce57, #28a745);
+}
+
+.roll-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.roll-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    animation: none;
+    transform: none;
+    box-shadow: none;
+}
+
+@keyframes rollPulse {
+    0%   { box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4); }
+    50%  { box-shadow: 0 4px 25px rgba(40, 167, 69, 0.7), 0 0 40px rgba(40, 167, 69, 0.2); }
+    100% { box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4); }
+}
+
+.waiting-text {
+    font-size: 1rem;
+    color: var(--text-muted);
+}
+
+/* ─── RACE TRACK ──────────────────────────────────────────────────────────── */
+
+.race-track {
+    background: var(--felt-darker);
+    border: 2px solid var(--card-border);
+    overflow-x: auto;
+}
+
+.race-track .card-body {
+    background: var(--felt-darker);
+    padding: 0.5rem;
+}
+
+.track-lane {
+    display: flex;
+    align-items: center;
+    padding: 4px 10px;
+    margin: 3px 0;
+    border-radius: 6px;
+    position: relative;
+    transition: all 0.3s ease;
+    border-right: 4px solid var(--gold);
+}
+
+.track-lane.leading {
+    background: rgba(255, 215, 0, 0.08);
+    box-shadow: 0 0 15px var(--gold-glow), inset 0 0 10px rgba(255, 215, 0, 0.05);
+}
+
+.track-lane.winner {
+    animation: winnerFlash 1s ease-in-out 3;
+}
+
+@keyframes winnerFlash {
+    0%   { background: rgba(255, 215, 0, 0.05); box-shadow: 0 0 10px var(--gold-glow); }
+    50%  { background: rgba(255, 215, 0, 0.2); box-shadow: 0 0 30px var(--gold-glow), 0 0 60px rgba(255, 215, 0, 0.2); }
+    100% { background: rgba(255, 215, 0, 0.05); box-shadow: 0 0 10px var(--gold-glow); }
+}
+
+.track-lane.scratched {
+    opacity: 0.4;
+    transition: opacity 0.6s ease-out;
+}
+
+.track-lane.scratch-animate {
+    animation: scratchFade 0.6s ease-out forwards;
+}
+
+@keyframes scratchFade {
+    0%   { opacity: 1; transform: scale(1); }
+    50%  { opacity: 0.6; transform: scale(0.98); }
+    100% { opacity: 0.4; transform: scale(1); }
+}
+
+.lane-number {
+    width: 34px;
+    font-weight: bold;
+    font-size: 0.95rem;
+    text-align: center;
+    color: var(--gold);
+    font-family: 'Courier New', Courier, monospace;
+    flex-shrink: 0;
+}
+
+.lane-track {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex: 1;
+}
+
+.track-space {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid var(--card-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--felt-dark);
+    transition: all 0.4s ease;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.track-space.passed {
+    background: rgba(40, 167, 69, 0.25);
+    border-color: var(--success);
+}
+
+.track-space.current {
+    background: var(--gold);
+    border-color: #ffed4a;
+    box-shadow: 0 0 12px var(--gold-glow);
+    transform: scale(1.05);
+}
+
+.horse-icon {
+    font-size: 1.2rem;
+    transition: transform 0.4s ease;
+}
+
+.finish-marker {
+    margin-left: 6px;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.scratch-overlay {
+    position: absolute;
+    right: 50px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.65rem;
+    font-weight: bold;
+    color: var(--danger);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    opacity: 0.8;
+    pointer-events: none;
+}
+
+/* ─── PLAYING CARDS ───────────────────────────────────────────────────────── */
+
+.playing-card {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 9px;
+    background: #fffef5;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    border: 2px solid #ddd;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s ease;
+    min-width: 36px;
+    text-align: center;
+}
+
+.playing-card.red-suit {
+    color: var(--red-suit);
+}
+
+.playing-card.black-suit {
+    color: var(--black-suit);
+}
+
+.playing-card.faded {
+    opacity: 0.35;
+    background: #e0e0e0;
+    border-color: #bbb;
+    text-decoration: line-through;
+    filter: grayscale(100%);
+}
+
+.playing-card.leading-card {
+    border-color: var(--gold);
+    box-shadow: 0 0 8px var(--gold-glow);
+}
+
+.playing-card:hover:not(.faded) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+}
+
+/* ─── BALANCE DISPLAY ─────────────────────────────────────────────────────── */
+
+.balance-display {
+    font-size: 1.6rem;
+    font-weight: bold;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.balance-increase {
+    animation: balanceGreenPulse 0.6s ease-out;
+}
+
+@keyframes balanceGreenPulse {
+    0%   { color: var(--success); text-shadow: 0 0 0 transparent; transform: scale(1); }
+    50%  { color: #5dff5d; text-shadow: 0 0 15px rgba(40, 167, 69, 0.6); transform: scale(1.15); }
+    100% { color: var(--success); text-shadow: 0 0 0 transparent; transform: scale(1); }
+}
+
+.balance-decrease {
+    animation: balanceRedPulse 0.6s ease-out;
+}
+
+@keyframes balanceRedPulse {
+    0%   { color: var(--danger); text-shadow: 0 0 0 transparent; transform: scale(1); }
+    50%  { color: #ff5d5d; text-shadow: 0 0 15px rgba(220, 53, 69, 0.6); transform: scale(1.15); }
+    100% { color: var(--danger); text-shadow: 0 0 0 transparent; transform: scale(1); }
+}
+
+/* ─── CHAT PANEL ──────────────────────────────────────────────────────────── */
+
+.chat-body {
+    height: 250px;
+    overflow-y: auto;
+    background: var(--felt-darker);
+    scroll-behavior: smooth;
+}
+
+.chat-msg {
+    padding: 4px 8px;
+    margin: 2px 4px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 3px solid var(--card-border);
+    font-size: 0.8rem;
+    word-break: break-word;
+}
+
+.chat-msg:nth-child(odd) {
+    border-left-color: var(--info);
+}
+
+.chat-msg:nth-child(even) {
+    border-left-color: var(--gold-dim);
+}
+
+/* ─── TOAST NOTIFICATIONS ─────────────────────────────────────────────────── */
+
+.toast-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10000;
+}
+
+.toast-notification {
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    animation: toastIn 0.3s ease-out, toastOut 0.3s ease-in 1.7s forwards;
+    margin-bottom: 0.5rem;
+}
+
+.toast-notification.error {
+    background: var(--danger);
+    color: #fff;
+}
+
+.toast-notification.success {
+    background: var(--success);
+    color: #fff;
+}
+
+@keyframes toastIn {
+    0%   { opacity: 0; transform: translateX(100%); }
+    100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toastOut {
+    0%   { opacity: 1; transform: translateX(0); }
+    100% { opacity: 0; transform: translateX(100%); }
+}
+
+/* ─── CARD / PANEL OVERRIDES ──────────────────────────────────────────────── */
+
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-primary);
+    border-radius: 8px;
+}
+
+.card-header {
+    background: var(--felt-darker);
+    border-bottom: 1px solid var(--card-border);
+    color: var(--text-primary);
+}
+
+.card-footer {
+    background: var(--felt-darker);
+    border-top: 1px solid var(--card-border);
+}
+
+.list-group-item {
+    background: var(--card-bg);
+    border-color: var(--card-border);
+    color: var(--text-primary);
+}
+
+.list-group-item-warning {
+    background: rgba(255, 215, 0, 0.12) !important;
+    color: var(--gold) !important;
+    border-color: var(--gold-dim) !important;
+}
+
+/* ─── FORM CONTROLS ───────────────────────────────────────────────────────── */
+
+.form-control {
+    background: var(--felt-darker);
+    border-color: var(--card-border);
+    color: var(--text-primary);
+}
+
+.form-control:focus {
+    background: var(--felt-darker);
+    border-color: var(--gold);
+    color: var(--text-primary);
+    box-shadow: 0 0 0 0.2rem var(--gold-glow);
+}
+
+.form-control::placeholder {
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
+.input-group .btn {
+    border-color: var(--card-border);
+}
+
+/* ─── BADGES ──────────────────────────────────────────────────────────────── */
+
+.badge.bg-success {
+    background-color: var(--success) !important;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.badge.bg-danger {
+    background-color: var(--danger) !important;
+}
+
+.badge.bg-primary {
+    background-color: #0d6efd !important;
+}
+
+.badge.bg-info {
+    background-color: var(--info) !important;
+}
+
+.badge.bg-warning {
+    color: #000 !important;
+}
+
+/* ─── HOME / LOBBY ────────────────────────────────────────────────────────── */
+
+.join-card {
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.join-card h1 {
+    font-size: 2.5rem;
+    color: var(--gold);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.lobby-card {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.lobby-card .list-group-item {
+    border-color: var(--card-border);
+}
+
+/* ─── RECONNECT OVERLAY ───────────────────────────────────────────────────── */
+
+.reconnect-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.reconnect-content {
+    text-align: center;
+    color: var(--gold);
+    font-size: 1.3rem;
+    font-weight: bold;
+}
+
+/* ─── SCRATCHED HORSES PANEL ──────────────────────────────────────────────── */
+
+.scratched-panel .badge {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.75rem;
+}
+
+/* ─── SCROLLBAR ───────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--felt-darker);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--card-border);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--gold-dim);
+}
+
+/* ─── ALERTS ──────────────────────────────────────────────────────────────── */
+
+.alert-warning {
+    background: rgba(255, 193, 7, 0.15);
+    border-color: var(--warning);
+    color: var(--warning);
+}
+
+.alert-danger {
+    background: rgba(220, 53, 69, 0.15);
+    border-color: var(--danger);
+    color: #ff8a8a;
+}
+
+.alert-info {
+    background: rgba(23, 162, 184, 0.15);
+    border-color: var(--info);
+    color: #7ce0f0;
+}
+
+.alert-success {
+    background: rgba(40, 167, 69, 0.15);
+    border-color: var(--success);
+    color: #7cff7c;
+}
+
+/* ─── RESPONSIVE ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 992px) {
+    .pot-display {
+        font-size: 1rem;
+    }
+
+    .pot-display strong {
+        font-size: 1.2rem;
+    }
+
+    .dice {
+        font-size: 2.2rem;
+    }
+
+    .dice-sum {
+        font-size: 1.3rem;
+    }
+
+    .roll-btn {
+        font-size: 1.1rem;
+        padding: 0.6rem 1.5rem;
+    }
+
+    .phase-banner {
+        font-size: 1.1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .track-space {
+        width: 28px;
+        height: 28px;
+        font-size: 0.85rem;
+    }
+
+    .lane-number {
+        width: 26px;
+        font-size: 0.8rem;
+    }
+
+    .track-lane {
+        padding: 3px 6px;
+    }
+
+    .dice {
+        font-size: 2rem;
+    }
+
+    .dice-sum {
+        font-size: 1.1rem;
+    }
+
+    .phase-banner {
+        font-size: 0.95rem;
+        padding: 0.5rem;
+    }
+
+    .roll-btn {
+        font-size: 1rem;
+        padding: 0.5rem 1.2rem;
+    }
+
+    .balance-display {
+        font-size: 1.2rem;
+    }
+
+    .chat-body {
+        height: 180px;
+    }
+
+    .playing-card {
+        font-size: 0.75rem;
+        padding: 3px 6px;
+        min-width: 30px;
+    }
+
+    .pot-display {
+        font-size: 0.9rem;
+    }
+
+    .join-card h1 {
+        font-size: 1.8rem;
+    }
+
+    .join-card .card-body {
+        padding: 2rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .track-space {
+        width: 22px;
+        height: 22px;
+        font-size: 0.7rem;
+        border-width: 1px;
+    }
+
+    .track-lane {
+        padding: 2px 4px;
+        margin: 1px 0;
+        border-right-width: 3px;
+    }
+
+    .lane-track {
+        gap: 1px;
+    }
+
+    .lane-number {
+        width: 22px;
+        font-size: 0.7rem;
+    }
+
+    .finish-marker {
+        font-size: 0.8rem;
+    }
+
+    .horse-icon {
+        font-size: 0.8rem;
+    }
+
+    .scratch-overlay {
+        font-size: 0.5rem;
+        letter-spacing: 1px;
+        right: 30px;
+    }
+
+    body {
+        font-size: 0.85rem;
+    }
+
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 0.5rem;
+    }
+
+    .dice-display,
+    .pot-display,
+    .turn-indicator {
+        text-align: center;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ADDITIONS — DICE FACES, CELEBRATION, SCOREBOARD, CONNECTION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── CSS DICE FACES ──────────────────────────────────────────────────────── */
+
+.dice-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.die {
+    width: 60px;
+    height: 60px;
+    background: var(--felt-darker);
+    border: 3px solid var(--card-border);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.die.rolling {
+    animation: diceShake 0.8s ease-in-out;
+}
+
+@keyframes diceShake {
+    0%   { transform: rotate(0deg) scale(1); }
+    10%  { transform: rotate(18deg) scale(1.1); }
+    20%  { transform: rotate(-18deg) scale(1.1); }
+    30%  { transform: rotate(22deg) scale(1.15); }
+    40%  { transform: rotate(-22deg) scale(1.15); }
+    50%  { transform: rotate(15deg) scale(1.1); }
+    60%  { transform: rotate(-12deg) scale(1.08); }
+    70%  { transform: rotate(8deg) scale(1.04); }
+    80%  { transform: rotate(-5deg) scale(1.02); }
+    90%  { transform: rotate(2deg) scale(1); }
+    100% { transform: rotate(0deg) scale(1); }
+}
+
+.die-face {
+    width: 44px;
+    height: 44px;
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    padding: 4px;
+}
+
+.die-face .dot {
+    width: 10px;
+    height: 10px;
+    background: #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    position: absolute;
+}
+
+/* Dot positions */
+.die-face .dot.tl { top: 4px; left: 4px; }
+.die-face .dot.tr { top: 4px; right: 4px; }
+.die-face .dot.ml { top: 50%; left: 4px; transform: translateY(-50%); }
+.die-face .dot.mr { top: 50%; right: 4px; transform: translateY(-50%); }
+.die-face .dot.bl { bottom: 4px; left: 4px; }
+.die-face .dot.br { bottom: 4px; right: 4px; }
+.die-face .dot.c  { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+
+/* ─── CONNECTION BANNER ───────────────────────────────────────────────────── */
+
+.connection-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: var(--danger);
+    color: #fff;
+    text-align: center;
+    padding: 0.5rem;
+    font-weight: bold;
+    z-index: 10001;
+    animation: bannerSlide 0.3s ease-out;
+}
+
+@keyframes bannerSlide {
+    from { transform: translateY(-100%); }
+    to { transform: translateY(0); }
+}
+
+/* ─── WINNER CELEBRATION ──────────────────────────────────────────────────── */
+
+.celebration-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.celebration-modal {
+    background: var(--felt-darker);
+    border: 3px solid var(--gold);
+    border-radius: 16px;
+    padding: 2.5rem;
+    text-align: center;
+    max-width: 500px;
+    width: 90%;
+    z-index: 9002;
+    box-shadow: 0 0 60px var(--gold-glow);
+    animation: modalPop 0.5s ease-out;
+}
+
+@keyframes modalPop {
+    0%   { transform: scale(0.5); opacity: 0; }
+    80%  { transform: scale(1.05); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.celebration-title {
+    font-size: 2.5rem;
+    color: var(--gold);
+    text-shadow: 0 0 20px var(--gold-glow);
+    margin-bottom: 0.5rem;
+}
+
+.celebration-horse {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 1rem;
+}
+
+.celebration-winners h4 {
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.winner-name {
+    display: inline-block;
+    background: var(--gold);
+    color: #000;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-weight: bold;
+    margin: 0.2rem;
+}
+
+.celebration-pot {
+    font-size: 1.5rem;
+    color: var(--gold);
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    margin-top: 0.5rem;
+}
+
+.celebration-balances {
+    max-height: 150px;
+    overflow-y: auto;
+    font-size: 0.9rem;
+}
+
+.celebration-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+/* ─── CONFETTI (PURE CSS) ─────────────────────────────────────────────────── */
+
+.confetti-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 9001;
+}
+
+.confetti-piece {
+    position: absolute;
+    width: 10px;
+    height: 20px;
+    top: -20px;
+    opacity: 0;
+    animation: confettiFall 3s ease-in forwards;
+    animation-delay: calc(var(--i) * 0.06s);
+}
+
+.confetti-piece:nth-child(5n+1) { background: var(--gold); left: calc(var(--i) * 2%); }
+.confetti-piece:nth-child(5n+2) { background: var(--danger); left: calc(var(--i) * 2% + 1%); }
+.confetti-piece:nth-child(5n+3) { background: var(--success); left: calc(var(--i) * 2% + 0.5%); }
+.confetti-piece:nth-child(5n+4) { background: var(--info); left: calc(var(--i) * 2% + 1.5%); }
+.confetti-piece:nth-child(5n+5) { background: #ff69b4; left: calc(var(--i) * 2% + 0.8%); }
+
+.confetti-piece:nth-child(odd) {
+    border-radius: 50%;
+    width: 8px;
+    height: 8px;
+}
+
+@keyframes confettiFall {
+    0%   { top: -20px; opacity: 1; transform: rotateZ(0deg) rotateX(0deg); }
+    25%  { opacity: 1; transform: rotateZ(90deg) rotateX(180deg); }
+    50%  { opacity: 0.8; transform: rotateZ(180deg) rotateX(360deg); }
+    75%  { opacity: 0.6; transform: rotateZ(270deg) rotateX(540deg); }
+    100% { top: 110%; opacity: 0; transform: rotateZ(360deg) rotateX(720deg); }
+}
+
+/* ─── FINAL SCOREBOARD ────────────────────────────────────────────────────── */
+
+.scoreboard-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 2rem;
+}
+
+.scoreboard-card {
+    max-width: 600px;
+    width: 100%;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.scoreboard-card h2 {
+    color: var(--gold);
+    margin: 0;
+}
+
+.scoreboard-card .table {
+    margin-bottom: 0;
+}
+
+.scoreboard-card .table th {
+    border-color: var(--card-border);
+    color: var(--text-muted);
+}
+
+.scoreboard-card .table td {
+    border-color: var(--card-border);
+}
+
+.font-monospace {
+    font-family: 'Courier New', Courier, monospace;
+}
+
+/* ─── RESPONSIVE DICE ─────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+    .die {
+        width: 48px;
+        height: 48px;
+    }
+
+    .die-face {
+        width: 36px;
+        height: 36px;
+    }
+
+    .die-face .dot {
+        width: 8px;
+        height: 8px;
+    }
+
+    .die-face .dot.tl { top: 3px; left: 3px; }
+    .die-face .dot.tr { top: 3px; right: 3px; }
+    .die-face .dot.ml { left: 3px; }
+    .die-face .dot.mr { right: 3px; }
+    .die-face .dot.bl { bottom: 3px; left: 3px; }
+    .die-face .dot.br { bottom: 3px; right: 3px; }
+
+    .celebration-modal {
+        padding: 1.5rem;
+    }
+
+    .celebration-title {
+        font-size: 1.8rem;
+    }
+}
