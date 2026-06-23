@@ -96,10 +96,16 @@ public class GameService
 
     // ─── PLAYER MANAGEMENT ──────────────────────────────────────────────────────
 
-    public Player AddOrReconnectPlayer(string name, string connectionId, string deviceId)
+    public Player? AddOrReconnectPlayer(string name, string connectionId, string deviceId)
     {
         lock (_lock)
         {
+            // Block kicked players from rejoining until game resets to Lobby
+            if (State.KickedDeviceIds.Contains(deviceId) && State.Phase != GamePhase.Lobby)
+            {
+                return null;
+            }
+
             // First: check if this device already has a player in the game
             var existingByDevice = State.Players.FirstOrDefault(p => p.DeviceId == deviceId);
             if (existingByDevice != null)
@@ -250,6 +256,12 @@ public class GameService
             var target = State.Players.FirstOrDefault(p => p.Id == targetPlayerId);
             if (target == null || target.IsHost) return false; // Can't kick yourself
 
+            // Record device ID so they can't rejoin until game resets
+            if (!string.IsNullOrEmpty(target.DeviceId))
+            {
+                State.KickedDeviceIds.Add(target.DeviceId);
+            }
+
             // Remove player from list entirely — their pot contributions stay
             State.Players.Remove(target);
             State.ChatMessages.Add($"{target.Name} was kicked from the game by the host.");
@@ -317,6 +329,18 @@ public class GameService
             var player = State.Players.FirstOrDefault(p => p.Id == playerId);
             if (player == null || !player.IsHost) return false;
             if (State.Phase != GamePhase.Lobby) return false;
+
+            // Clear chat and state for new game session
+            State.ChatMessages.Clear();
+            State.PotContributions.Clear();
+            State.CentralPot = 0m;
+            State.TotalPotWon = 0m;
+            State.PayoutDetails.Clear();
+            State.WinningHorse = null;
+            State.WinningPlayers.Clear();
+            State.ScratchCount = 0;
+            State.RoundNumber = 1;
+            State.KickedDeviceIds.Clear();
 
             // Reset horses and deck
             State.Horses = BuildHorses();
@@ -598,6 +622,7 @@ public class GameService
             State.TotalPotWon = 0m;
             State.PayoutDetails.Clear();
             State.ChatMessages.Clear();
+            State.KickedDeviceIds.Clear();
 
             foreach (var p in State.Players)
             {

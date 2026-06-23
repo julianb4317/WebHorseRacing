@@ -49,6 +49,13 @@ public class GameHub : Hub
 
         var player = _gameService.AddOrReconnectPlayer(playerName, connectionId, deviceId);
 
+        if (player == null)
+        {
+            // Player was kicked and can't rejoin until game resets
+            await Clients.Caller.SendAsync("Kicked", "You were kicked from this game. Please wait for the next round.");
+            return;
+        }
+
         // Store mapping (remove old mapping for this device if exists)
         var oldConnection = _connectionPlayerMap.FirstOrDefault(kvp => kvp.Value == player.Id).Key;
         if (oldConnection != null && oldConnection != connectionId)

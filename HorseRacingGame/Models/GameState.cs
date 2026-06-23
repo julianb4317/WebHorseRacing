@@ -19,6 +19,7 @@ public class GameState
     public decimal TotalPotWon { get; set; } = 0m;
     public List<PayoutDetail> PayoutDetails { get; set; } = new();
     public List<string> ChatMessages { get; set; } = new();
+    public List<string> KickedDeviceIds { get; set; } = new();
 }
 
 public class PotContribution
