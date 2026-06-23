@@ -29,3 +29,4 @@ C:\Users\julianb\source\repos\WebHorseRacing\HorseRacingGame\obj\Debug\net8.0\re
 C:\Users\julianb\source\repos\WebHorseRacing\HorseRacingGame\obj\Debug\net8.0\HorseRacingGame.pdb
 C:\Users\julianb\source\repos\WebHorseRacing\HorseRacingGame\obj\Debug\net8.0\HorseRacingGame.genruntimeconfig.cache
 C:\Users\julianb\source\repos\WebHorseRacing\HorseRacingGame\obj\Debug\net8.0\ref\HorseRacingGame.dll
+C:\Users\julianb\source\repos\WebHorseRacing\HorseRacingGame\obj\Debug\net8.0\HorseRacingGame.sourcelink.json

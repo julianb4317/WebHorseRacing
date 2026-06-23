@@ -1,5 +1,6 @@
 @page "/game"
 @using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.AspNetCore.WebUtilities
 @using HorseRacingGame.Models
 @inject NavigationManager Navigation
 @implements IAsyncDisposable
@@ -449,6 +450,20 @@ else if (_gameState?.Phase != GamePhase.Ended || !_showScoreboard)
     private List<ToastMessage> _toasts = new();
 
     private record ToastMessage(string Message, string Type);
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Read player name from query string (passed from Home.razor)
+        var uri = new Uri(Navigation.Uri);
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("name", out var nameValue))
+        {
+            _playerName = nameValue.ToString();
+            if (!string.IsNullOrWhiteSpace(_playerName))
+            {
+                await JoinGame();
+            }
+        }
+    }
 
     private async Task HandleKeyDown(KeyboardEventArgs e)
     {

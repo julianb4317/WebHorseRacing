@@ -243,10 +243,10 @@ else
             // Check if game is in progress (for join screen message)
             _gameInProgress = state.Phase == GamePhase.Racing || state.Phase == GamePhase.Scratching;
 
-            // If game has moved past lobby, navigate to /game
+            // If game has moved past lobby, navigate to /game with player name
             if (_hasJoined && state.Phase != GamePhase.Lobby)
             {
-                InvokeAsync(() => Navigation.NavigateTo("/game"));
+                InvokeAsync(() => Navigation.NavigateTo($"/game?name={Uri.EscapeDataString(_playerName.Trim())}"));
             }
 
             InvokeAsync(StateHasChanged);
