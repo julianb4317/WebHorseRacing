@@ -122,40 +122,30 @@ public class GameService
             var player = State.Players.FirstOrDefault(p => p.ConnectionId == connectionId);
             if (player == null) return;
 
-            // Check if it was this player's turn before removing
-            var connectedBefore = State.Players.Where(p => p.IsConnected).ToList();
-            bool wasTheirTurn = false;
-            if (connectedBefore.Count > 0 &&
+            // Mark as disconnected (they may reconnect from Game page)
+            player.IsConnected = false;
+            State.ChatMessages.Add($"{player.Name} disconnected.");
+
+            // If it was this player's turn, advance to the next connected player
+            var connectedPlayers = State.Players.Where(p => p.IsConnected).ToList();
+            if (connectedPlayers.Count > 0 &&
                 (State.Phase == GamePhase.Scratching || State.Phase == GamePhase.Racing))
             {
-                var currentIdx = State.CurrentPlayerIndex % connectedBefore.Count;
-                wasTheirTurn = connectedBefore[currentIdx].Id == player.Id;
-            }
-
-            // Remove player from the game entirely
-            State.Players.Remove(player);
-            State.ChatMessages.Add($"{player.Name} left the game.");
-
-            // Adjust CurrentPlayerIndex after removal
-            var connectedAfter = State.Players.Where(p => p.IsConnected).ToList();
-            if (connectedAfter.Count > 0)
-            {
-                // If the removed player was before or at the current index, shift back
-                if (State.CurrentPlayerIndex >= connectedAfter.Count)
+                // Recalculate index based on connected players only
+                if (State.CurrentPlayerIndex >= connectedPlayers.Count)
                 {
                     State.CurrentPlayerIndex = 0;
                 }
-                // If it was their turn, the index now naturally points to the next player
-                // (no need to advance since we removed from the list)
             }
             else
             {
                 State.CurrentPlayerIndex = 0;
             }
 
-            // If host left, promote next player
-            if (player.IsHost && State.Players.Count > 0)
+            // If host left, promote next connected player
+            if (player.IsHost)
             {
+                player.IsHost = false;
                 var newHost = State.Players.FirstOrDefault(p => p.IsConnected);
                 if (newHost != null)
                 {
