@@ -512,6 +512,9 @@ else if (_gameState?.Phase != GamePhase.Ended || !_showScoreboard)
             _gameState = state;
             if (_currentPlayer != null)
                 _currentPlayer = state.Players.FirstOrDefault(p => p.Id == _currentPlayer.Id) ?? _currentPlayer;
+            else if (!string.IsNullOrEmpty(_playerName))
+                _currentPlayer = state.Players.FirstOrDefault(p =>
+                    p.Name.Equals(_playerName.Trim(), StringComparison.OrdinalIgnoreCase) && p.IsConnected);
             InvokeAsync(StateHasChanged);
         });
 

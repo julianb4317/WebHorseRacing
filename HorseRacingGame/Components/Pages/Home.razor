@@ -233,6 +233,12 @@ else
             {
                 _currentPlayer = state.Players.FirstOrDefault(p => p.Id == _currentPlayer.Id) ?? _currentPlayer;
             }
+            else if (_hasJoined && !string.IsNullOrEmpty(_playerName))
+            {
+                // First time receiving state after joining — find ourselves by name
+                _currentPlayer = state.Players.FirstOrDefault(p =>
+                    p.Name.Equals(_playerName.Trim(), StringComparison.OrdinalIgnoreCase) && p.IsConnected);
+            }
 
             // Check if game is in progress (for join screen message)
             _gameInProgress = state.Phase == GamePhase.Racing || state.Phase == GamePhase.Scratching;
