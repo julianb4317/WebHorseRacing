@@ -274,6 +274,43 @@ public class GameHub : Hub
         await Clients.All.SendAsync("StateUpdated", _gameService.State);
     }
 
+    public async Task KickPlayer(string targetPlayerId)
+    {
+        var player = GetCallerPlayer();
+        if (player == null)
+        {
+            await Clients.Caller.SendAsync("Error", "You are not in the game.");
+            return;
+        }
+
+        if (!player.IsHost)
+        {
+            await Clients.Caller.SendAsync("Error", "Only the host can kick players.");
+            return;
+        }
+
+        var target = _gameService.State.Players.FirstOrDefault(p => p.Id == targetPlayerId);
+        var targetName = target?.Name ?? "Unknown";
+
+        var success = _gameService.KickPlayer(player.Id, targetPlayerId);
+        if (!success)
+        {
+            await Clients.Caller.SendAsync("Error", "Cannot kick that player.");
+            return;
+        }
+
+        // Notify the kicked player's connection if we can find it
+        var kickedConnection = _connectionPlayerMap.FirstOrDefault(kvp => kvp.Value == targetPlayerId).Key;
+        if (kickedConnection != null)
+        {
+            await Clients.Client(kickedConnection).SendAsync("Kicked", "You have been kicked from the game.");
+            _connectionPlayerMap.TryRemove(kickedConnection, out _);
+        }
+
+        await Clients.All.SendAsync("PlayerLeft", targetName);
+        await Clients.All.SendAsync("StateUpdated", _gameService.State);
+    }
+
     // ─── HELPERS ────────────────────────────────────────────────────────────────
 
     private Player? GetCallerPlayer()

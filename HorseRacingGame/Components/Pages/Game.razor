@@ -417,8 +417,15 @@ else if (_gameState?.Phase != GamePhase.Ended || !_showScoreboard)
                                     @if (player.IsHost) { <span class="badge bg-warning text-dark ms-1">Host</span> }
                                     @if (!player.IsConnected) { <span class="badge bg-secondary ms-1">DC</span> }
                                     @if (isTurn) { <span class="ms-1">🎲</span> }
+                                    @if (player.Balance <= 0) { <span class="badge bg-danger ms-1">$0</span> }
                                 </span>
-                                <span class="badge bg-success">$@player.Balance.ToString("F2")</span>
+                                <span class="d-flex align-items-center gap-1">
+                                    <span class="badge bg-success">$@player.Balance.ToString("F2")</span>
+                                    @if (_currentPlayer?.IsHost == true && player.Id != _currentPlayer.Id && player.IsConnected)
+                                    {
+                                        <button class="btn btn-outline-danger btn-sm py-0 px-1" @onclick="() => KickPlayer(player.Id)" title="Kick">✕</button>
+                                    }
+                                </span>
                             </li>
                         }
                     }
@@ -604,6 +611,13 @@ else if (_gameState?.Phase != GamePhase.Ended || !_showScoreboard)
             ShowToast(message, "error");
             InvokeAsync(StateHasChanged);
         });
+
+        _hubConnection.On<string>("Kicked", (message) =>
+        {
+            _isConnected = false;
+            ShowToast(message, "error");
+            InvokeAsync(() => Navigation.NavigateTo("/"));
+        });
     }
 
     private async void ShowToast(string message, string type)
@@ -667,6 +681,12 @@ else if (_gameState?.Phase != GamePhase.Ended || !_showScoreboard)
             await _hubConnection.SendAsync("SendChat", _chatMessage);
             _chatMessage = string.Empty;
         }
+    }
+
+    private async Task KickPlayer(string targetPlayerId)
+    {
+        if (_hubConnection is not null)
+            await _hubConnection.SendAsync("KickPlayer", targetPlayerId);
     }
 
     // ─── HELPERS ─────────────────────────────────────────────────────────────

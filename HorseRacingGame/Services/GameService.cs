@@ -221,12 +221,68 @@ public class GameService
         State.ChatMessages.Add($"{newHost.Name} is now the host.");
     }
 
+    private void EliminateBrokePlayers()
+    {
+        var brokePlayers = State.Players.Where(p => p.IsConnected && p.Balance <= 0m).ToList();
+        foreach (var broke in brokePlayers)
+        {
+            broke.IsConnected = false;
+            State.ChatMessages.Add($"{broke.Name} is out of money and has been eliminated!");
+        }
+
+        // Adjust turn index
+        var connected = State.Players.Where(p => p.IsConnected).ToList();
+        if (connected.Count > 0 && State.CurrentPlayerIndex >= connected.Count)
+        {
+            State.CurrentPlayerIndex = 0;
+        }
+
+        EnsureHost();
+    }
+
+    public bool KickPlayer(string hostId, string targetPlayerId)
+    {
+        lock (_lock)
+        {
+            var host = State.Players.FirstOrDefault(p => p.Id == hostId);
+            if (host == null || !host.IsHost) return false;
+
+            var target = State.Players.FirstOrDefault(p => p.Id == targetPlayerId);
+            if (target == null || target.IsHost) return false; // Can't kick yourself
+
+            // Remove player from list entirely — their pot contributions stay
+            State.Players.Remove(target);
+            State.ChatMessages.Add($"{target.Name} was kicked from the game by the host.");
+
+            // Adjust turn index
+            var connected = State.Players.Where(p => p.IsConnected).ToList();
+            if (connected.Count > 0 && State.CurrentPlayerIndex >= connected.Count)
+            {
+                State.CurrentPlayerIndex = 0;
+            }
+
+            // End game if fewer than 2 players during active gameplay
+            if (connected.Count < 2 &&
+                (State.Phase == GamePhase.Scratching || State.Phase == GamePhase.Racing))
+            {
+                State.Phase = GamePhase.Ended;
+                State.ChatMessages.Add("Not enough players remaining. Game ended.");
+            }
+
+            NotifyStateChanged();
+            return true;
+        }
+    }
+
     // ─── GAME FLOW METHODS ──────────────────────────────────────────────────────
 
     public void InitializeGame()
     {
         lock (_lock)
         {
+            // Remove any disconnected players from previous sessions
+            State.Players.RemoveAll(p => !p.IsConnected);
+
             State.Horses = BuildHorses();
             _deck = BuildDeck();
             ShuffleDeck(_deck);
@@ -506,8 +562,11 @@ public class GameService
             });
         }
 
-        State.ChatMessages.Add($"Pot of ${State.CentralPot:F2} split among {winners.Count} winner(s) ({totalWinningCards} cards).");
+        State.ChatMessages.Add($"Pot of ${State.TotalPotWon:F2} split among {winners.Count} winner(s) ({totalWinningCards} cards).");
         State.CentralPot = 0m;
+
+        // Eliminate players with $0 balance after payout
+        EliminateBrokePlayers();
     }
 
     public bool ResetGame(string playerId)
@@ -517,7 +576,10 @@ public class GameService
             var player = State.Players.FirstOrDefault(p => p.Id == playerId);
             if (player == null || !player.IsHost) return false;
 
-            // Keep players, reset everything else
+            // Remove disconnected players and players with $0 balance
+            State.Players.RemoveAll(p => !p.IsConnected);
+
+            // Keep connected players, reset everything else
             State.Horses = BuildHorses();
             _deck = BuildDeck();
             ShuffleDeck(_deck);
@@ -543,6 +605,7 @@ public class GameService
             }
 
             State.ChatMessages.Add("Game reset. Waiting in lobby...");
+            EnsureHost();
             NotifyStateChanged();
             return true;
         }
