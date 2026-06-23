@@ -242,6 +242,8 @@ public class GameService
             State.RoundNumber = 1;
             State.WinningHorse = null;
             State.WinningPlayers.Clear();
+            State.TotalPotWon = 0m;
+            State.PayoutDetails.Clear();
 
             foreach (var player in State.Players)
             {
@@ -359,7 +361,7 @@ public class GameService
         horse.Scratched = true;
         horse.ScratchOrder = State.ScratchCount;
 
-        // Assign penalty based on scratch order
+        // Assign penalty based on scratch order (applied during racing phase only)
         horse.ScratchPenalty = State.ScratchCount switch
         {
             1 => 1m,
@@ -369,34 +371,17 @@ public class GameService
             _ => 0m
         };
 
-        // Remove matching cards from all players and charge penalty
+        // Mark matching cards as inactive (these cards are now dead)
         foreach (var player in State.Players.Where(p => p.IsConnected))
         {
             var matchingCards = player.Cards.Where(c => c.Value == sum).ToList();
-            if (matchingCards.Count > 0)
+            foreach (var card in matchingCards)
             {
-                decimal totalPenalty = matchingCards.Count * horse.ScratchPenalty.Value;
-                player.Balance -= totalPenalty;
-                State.CentralPot += totalPenalty;
-
-                State.PotContributions.Add(new PotContribution
-                {
-                    PlayerId = player.Id,
-                    Amount = totalPenalty,
-                    Reason = $"Scratch penalty: {matchingCards.Count}× Horse #{sum} @ ${horse.ScratchPenalty.Value}"
-                });
-
-                // Mark cards as inactive
-                foreach (var card in matchingCards)
-                {
-                    card.IsActive = false;
-                }
-
-                player.BalanceHistory.Add($"-${totalPenalty} (Horse #{sum} scratched)");
+                card.IsActive = false;
             }
         }
 
-        var result = $"Horse #{sum} scratched! (Penalty: ${horse.ScratchPenalty}/card)";
+        var result = $"Horse #{sum} scratched! (Rolling this number during racing costs ${horse.ScratchPenalty}/roll)";
         State.ChatMessages.Add(result);
 
         // Check if 4 scratches reached — transition to Racing
@@ -481,6 +466,10 @@ public class GameService
 
         int winningNumber = State.WinningHorse.Number;
 
+        // Store the pot total before distributing
+        State.TotalPotWon = State.CentralPot;
+        State.PayoutDetails.Clear();
+
         // Find players with active cards matching the winning horse
         var winners = State.Players
             .Where(p => p.Cards.Any(c => c.Value == winningNumber && c.IsActive))
@@ -508,6 +497,13 @@ public class GameService
             decimal winnings = perCard * cardCount;
             player.Balance += winnings;
             player.BalanceHistory.Add($"+${winnings:F2} (won with {cardCount}× Horse #{winningNumber} cards)");
+
+            State.PayoutDetails.Add(new PayoutDetail
+            {
+                PlayerName = player.Name,
+                CardCount = cardCount,
+                AmountWon = winnings
+            });
         }
 
         State.ChatMessages.Add($"Pot of ${State.CentralPot:F2} split among {winners.Count} winner(s) ({totalWinningCards} cards).");
@@ -537,6 +533,8 @@ public class GameService
             State.RoundNumber = 1;
             State.WinningHorse = null;
             State.WinningPlayers.Clear();
+            State.TotalPotWon = 0m;
+            State.PayoutDetails.Clear();
             State.ChatMessages.Clear();
 
             foreach (var p in State.Players)

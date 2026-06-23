@@ -62,7 +62,22 @@
                     <h4>No card holders — pot carries over!</h4>
                 </div>
             }
-            <div class="celebration-pot">Pot Won: $@_gameState.CentralPot.ToString("F2")</div>
+            <div class="celebration-pot">Pot Won: $@_gameState.TotalPotWon.ToString("F2")</div>
+
+            @if (_gameState.PayoutDetails.Count > 0)
+            {
+                <div class="payout-breakdown mt-3">
+                    <h5>Payout Breakdown:</h5>
+                    @foreach (var detail in _gameState.PayoutDetails)
+                    {
+                        <div class="d-flex justify-content-between px-3">
+                            <span>@detail.PlayerName (@detail.CardCount card@(detail.CardCount > 1 ? "s" : ""))</span>
+                            <span class="text-success fw-bold">+$@detail.AmountWon.ToString("F2")</span>
+                        </div>
+                    }
+                </div>
+            }
+
             <div class="celebration-balances mt-3">
                 <h5>Updated Balances:</h5>
                 @foreach (var p in _gameState.Players.OrderByDescending(p => p.Balance))

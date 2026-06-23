@@ -16,6 +16,8 @@ public class GameState
     public int RoundNumber { get; set; } = 1;
     public Horse? WinningHorse { get; set; }
     public List<Player> WinningPlayers { get; set; } = new();
+    public decimal TotalPotWon { get; set; } = 0m;
+    public List<PayoutDetail> PayoutDetails { get; set; } = new();
     public List<string> ChatMessages { get; set; } = new();
 }
 
@@ -24,4 +26,11 @@ public class PotContribution
     public string PlayerId { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public string Reason { get; set; } = string.Empty;
+}
+
+public class PayoutDetail
+{
+    public string PlayerName { get; set; } = string.Empty;
+    public int CardCount { get; set; }
+    public decimal AmountWon { get; set; }
 }
