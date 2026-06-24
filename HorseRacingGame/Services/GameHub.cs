@@ -103,7 +103,7 @@ public class GameHub : Hub
         }
 
         // Validate it's this player's turn
-        var connectedPlayers = _gameService.State.Players.Where(p => p.IsConnected).ToList();
+        var connectedPlayers = _gameService.State.Players.Where(p => p.IsConnected && !p.IsSpectator).ToList();
         if (connectedPlayers.Count == 0) return;
 
         var currentPlayer = connectedPlayers[_gameService.State.CurrentPlayerIndex % connectedPlayers.Count];

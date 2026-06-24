@@ -10,5 +10,6 @@ public class Player
     public List<Card> Cards { get; set; } = new();
     public bool IsHost { get; set; } = false;
     public bool IsConnected { get; set; } = true;
+    public bool IsSpectator { get; set; } = false;
     public List<string> BalanceHistory { get; set; } = new();
 }

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HorseRacingGame")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+fd89b51a0c8dbf24bf74c5880c1a0e6f620f4cab")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c04393b08e8fe654d711a01a7dbb37b16a7e9f1e")]
 [assembly: System.Reflection.AssemblyProductAttribute("HorseRacingGame")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HorseRacingGame")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

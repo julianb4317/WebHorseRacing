@@ -153,11 +153,13 @@ public class GameService
                 ConnectionId = connectionId,
                 DeviceId = deviceId,
                 IsHost = State.Players.Count(p => p.IsConnected) == 0,
-                IsConnected = true
+                IsConnected = true,
+                // If joining mid-game (not in Lobby), mark as spectator
+                IsSpectator = State.Phase != GamePhase.Lobby
             };
 
             State.Players.Add(player);
-            State.ChatMessages.Add($"{name} joined the game.");
+            State.ChatMessages.Add($"{name} joined the game.{(player.IsSpectator ? " (spectating until next round)" : "")}");
             EnsureHost();
             NotifyStateChanged();
             return player;
@@ -175,9 +177,9 @@ public class GameService
             player.IsConnected = false;
             State.ChatMessages.Add($"{player.Name} disconnected.");
 
-            var connectedPlayers = State.Players.Where(p => p.IsConnected).ToList();
+            var connectedPlayers = State.Players.Where(p => p.IsConnected && !p.IsSpectator).ToList();
 
-            // If fewer than 2 connected players remain during an active game, end it
+            // If fewer than 2 active players remain during an active game, end it
             if (connectedPlayers.Count < 2 &&
                 (State.Phase == GamePhase.Scratching || State.Phase == GamePhase.Racing))
             {
@@ -229,7 +231,7 @@ public class GameService
 
     private void EliminateBrokePlayers()
     {
-        var brokePlayers = State.Players.Where(p => p.IsConnected && p.Balance <= 0m).ToList();
+        var brokePlayers = State.Players.Where(p => p.IsConnected && !p.IsSpectator && p.Balance <= 0m).ToList();
         foreach (var broke in brokePlayers)
         {
             broke.IsConnected = false;
@@ -237,7 +239,7 @@ public class GameService
         }
 
         // Adjust turn index
-        var connected = State.Players.Where(p => p.IsConnected).ToList();
+        var connected = State.Players.Where(p => p.IsConnected && !p.IsSpectator).ToList();
         if (connected.Count > 0 && State.CurrentPlayerIndex >= connected.Count)
         {
             State.CurrentPlayerIndex = 0;
@@ -267,13 +269,13 @@ public class GameService
             State.ChatMessages.Add($"{target.Name} was kicked from the game by the host.");
 
             // Adjust turn index
-            var connected = State.Players.Where(p => p.IsConnected).ToList();
+            var connected = State.Players.Where(p => p.IsConnected && !p.IsSpectator).ToList();
             if (connected.Count > 0 && State.CurrentPlayerIndex >= connected.Count)
             {
                 State.CurrentPlayerIndex = 0;
             }
 
-            // End game if fewer than 2 players during active gameplay
+            // End game if fewer than 2 active players during active gameplay
             if (connected.Count < 2 &&
                 (State.Phase == GamePhase.Scratching || State.Phase == GamePhase.Racing))
             {
@@ -330,8 +332,7 @@ public class GameService
             if (player == null || !player.IsHost) return false;
             if (State.Phase != GamePhase.Lobby) return false;
 
-            // Clear chat and state for new game session
-            State.ChatMessages.Clear();
+            // Reset game state for new round (but keep chat — only ResetGame clears chat)
             State.PotContributions.Clear();
             State.CentralPot = 0m;
             State.TotalPotWon = 0m;
@@ -341,6 +342,12 @@ public class GameService
             State.ScratchCount = 0;
             State.RoundNumber = 1;
             State.KickedDeviceIds.Clear();
+
+            // Mark all connected players as active (not spectators)
+            foreach (var p in State.Players.Where(p => p.IsConnected))
+            {
+                p.IsSpectator = false;
+            }
 
             // Reset horses and deck
             State.Horses = BuildHorses();
@@ -390,7 +397,7 @@ public class GameService
                 return null;
 
             // Validate it's this player's turn
-            var connectedPlayers = State.Players.Where(p => p.IsConnected).ToList();
+            var connectedPlayers = State.Players.Where(p => p.IsConnected && !p.IsSpectator).ToList();
             if (connectedPlayers.Count == 0) return null;
 
             var currentPlayer = connectedPlayers[State.CurrentPlayerIndex % connectedPlayers.Count];
@@ -673,7 +680,7 @@ public class GameService
 
     private void AdvanceCurrentPlayer()
     {
-        var connectedPlayers = State.Players.Where(p => p.IsConnected).ToList();
+        var connectedPlayers = State.Players.Where(p => p.IsConnected && !p.IsSpectator).ToList();
         if (connectedPlayers.Count == 0) return;
 
         State.CurrentPlayerIndex = (State.CurrentPlayerIndex + 1) % connectedPlayers.Count;

@@ -269,6 +269,23 @@ header h1 {
     flex-shrink: 0;
 }
 
+.lane-cards {
+    width: 90px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 4px;
+    flex-shrink: 0;
+}
+
+.lane-card {
+    font-size: 0.7rem !important;
+    padding: 2px 4px !important;
+    min-width: 28px !important;
+}
+
 .lane-track {
     display: flex;
     align-items: center;
@@ -681,6 +698,16 @@ header h1 {
     .lane-number {
         width: 26px;
         font-size: 0.8rem;
+    }
+
+    .lane-cards {
+        width: 60px;
+    }
+
+    .lane-card {
+        font-size: 0.6rem !important;
+        padding: 1px 3px !important;
+        min-width: 22px !important;
     }
 
     .track-lane {

@@ -265,7 +265,7 @@ else if (_gameState?.Phase != GamePhase.Ended || !_showScoreboard)
                 </div>
             </div>
 
-            <!-- RACE TRACK -->
+            <!-- RACE TRACK WITH CARDS -->
             <div class="race-track card mb-3">
                 <div class="card-body p-2">
                     @if (_gameState?.Horses != null)
@@ -274,7 +274,15 @@ else if (_gameState?.Phase != GamePhase.Ended || !_showScoreboard)
                         {
                             var isLeader = !horse.Scratched && horse == GetLeadingHorse();
                             var isWinner = _gameState.WinningHorse?.Number == horse.Number;
+                            var myCardsForHorse = _currentPlayer?.Cards?.Where(c => c.Value == horse.Number).ToList() ?? new();
                             <div class="track-lane @(horse.Scratched ? "scratched" : "") @(isLeader ? "leading" : "") @(isWinner ? "winner" : "")">
+                                <div class="lane-cards">
+                                    @foreach (var card in myCardsForHorse)
+                                    {
+                                        var suitClass = (card.Suit == "Hearts" || card.Suit == "Diamonds") ? "red-suit" : "black-suit";
+                                        <span class="playing-card lane-card @suitClass @(!card.IsActive ? "faded" : "") @(isLeader && card.IsActive ? "leading-card" : "")">@card.Display</span>
+                                    }
+                                </div>
                                 <div class="lane-number">@horse.Number</div>
                                 <div class="lane-track">
                                     @for (int i = 0; i < horse.TotalSpaces; i++)
@@ -709,7 +717,7 @@ else if (_gameState?.Phase != GamePhase.Ended || !_showScoreboard)
     private Player? GetCurrentTurnPlayer()
     {
         if (_gameState == null) return null;
-        var connected = _gameState.Players.Where(p => p.IsConnected).ToList();
+        var connected = _gameState.Players.Where(p => p.IsConnected && !p.IsSpectator).ToList();
         if (connected.Count == 0) return null;
         return connected[_gameState.CurrentPlayerIndex % connected.Count];
     }
@@ -718,6 +726,7 @@ else if (_gameState?.Phase != GamePhase.Ended || !_showScoreboard)
     {
         if (_gameState?.Phase != GamePhase.Scratching && _gameState?.Phase != GamePhase.Racing)
             return false;
+        if (player.IsSpectator) return false;
         var current = GetCurrentTurnPlayer();
         return current?.Id == player.Id;
     }
