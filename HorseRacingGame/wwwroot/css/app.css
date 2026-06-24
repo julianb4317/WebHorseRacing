@@ -270,14 +270,17 @@ header h1 {
 }
 
 .lane-cards {
-    width: 90px;
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
     display: flex;
     flex-wrap: wrap;
     gap: 2px;
     align-items: center;
     justify-content: flex-end;
-    padding-right: 4px;
+    padding-right: 6px;
     flex-shrink: 0;
+    overflow: hidden;
 }
 
 .lane-card {
@@ -701,7 +704,9 @@ header h1 {
     }
 
     .lane-cards {
-        width: 60px;
+        width: 65px;
+        min-width: 65px;
+        max-width: 65px;
     }
 
     .lane-card {
