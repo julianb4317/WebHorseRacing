@@ -277,10 +277,10 @@ else if (_gameState?.Phase != GamePhase.Ended || !_showScoreboard)
                             var myCardsForHorse = _currentPlayer?.Cards?.Where(c => c.Value == horse.Number).ToList() ?? new();
                             <div class="track-lane @(horse.Scratched ? "scratched" : "") @(isLeader ? "leading" : "") @(isWinner ? "winner" : "")">
                                 <div class="lane-cards">
-                                    @foreach (var card in myCardsForHorse)
+                                    @{ var cardCount = myCardsForHorse.Count(c => c.IsActive); }
+                                    @if (cardCount > 0)
                                     {
-                                        var suitClass = (card.Suit == "Hearts" || card.Suit == "Diamonds") ? "red-suit" : "black-suit";
-                                        <span class="playing-card lane-card @suitClass @(!card.IsActive ? "faded" : "") @(isLeader && card.IsActive ? "leading-card" : "")">@card.Display</span>
+                                        <span class="lane-card-count @(isLeader ? "leading-card" : "")">@(cardCount)X</span>
                                     }
                                 </div>
                                 <div class="lane-number">@horse.Number</div>

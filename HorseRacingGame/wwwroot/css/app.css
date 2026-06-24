@@ -270,17 +270,30 @@ header h1 {
 }
 
 .lane-cards {
-    width: 100px;
-    min-width: 100px;
-    max-width: 100px;
+    width: 36px;
+    min-width: 36px;
+    max-width: 36px;
     display: flex;
-    flex-wrap: wrap;
-    gap: 2px;
     align-items: center;
-    justify-content: flex-end;
-    padding-right: 6px;
+    justify-content: center;
     flex-shrink: 0;
-    overflow: hidden;
+}
+
+.lane-card-count {
+    font-size: 0.8rem;
+    font-weight: bold;
+    font-family: 'Courier New', Courier, monospace;
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 5px;
+    border-radius: 4px;
+    border: 1px solid var(--card-border);
+}
+
+.lane-card-count.leading-card {
+    color: var(--gold);
+    border-color: var(--gold);
+    background: rgba(255, 215, 0, 0.15);
 }
 
 .lane-card {
@@ -704,15 +717,14 @@ header h1 {
     }
 
     .lane-cards {
-        width: 65px;
-        min-width: 65px;
-        max-width: 65px;
+        width: 30px;
+        min-width: 30px;
+        max-width: 30px;
     }
 
-    .lane-card {
-        font-size: 0.6rem !important;
-        padding: 1px 3px !important;
-        min-width: 22px !important;
+    .lane-card-count {
+        font-size: 0.7rem;
+        padding: 1px 3px;
     }
 
     .track-lane {
