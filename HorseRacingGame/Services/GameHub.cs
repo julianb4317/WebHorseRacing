@@ -51,8 +51,15 @@ public class GameHub : Hub
 
         if (player == null)
         {
-            // Player was kicked and can't rejoin until game resets
-            await Clients.Caller.SendAsync("Kicked", "You were kicked from this game. Please wait for the next round.");
+            // Player was kicked or lobby is full
+            if (_gameService.State.KickedDeviceIds.Contains(deviceId) && _gameService.State.Phase != GamePhase.Lobby)
+            {
+                await Clients.Caller.SendAsync("Kicked", "You were kicked from this game. Please wait for the next round.");
+            }
+            else
+            {
+                await Clients.Caller.SendAsync("Error", "The lobby is full (max 6 players).");
+            }
             return;
         }
 

@@ -146,7 +146,12 @@ public class GameService
                 return existingConnected;
             }
 
-            // New player
+            // New player — check capacity
+            if (State.Players.Count(p => p.IsConnected) >= 6)
+            {
+                return null; // Lobby full
+            }
+
             var player = new Player
             {
                 Name = name,
